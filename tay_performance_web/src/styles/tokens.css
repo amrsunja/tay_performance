@@ -1,0 +1,81 @@
+/* ============================================================
+   Tay Performance — Design tokens (design_tech_doc.md §1)
+   Dark-first, single theme. Octane accent + tricolor brand.
+   ============================================================ */
+:root {
+  /* Backgrounds & surfaces (elevation model) */
+  --bg-canvas: #0a0c0f;
+  --bg-base: #0f1318;
+  --surface-1: #161b22;
+  --surface-2: #1c232c;
+  --surface-3: #232c37;
+  --surface-inset: #0c0f13;
+  --surface-well: #10151c;
+  --border-subtle: #252d38;
+  --border-strong: #36414f;
+
+  /* Primary accent — "Octane" */
+  --octane-50: #fff4e6;
+  --octane-300: #ffc56b;
+  --octane-500: #ff9e1b;
+  --octane-600: #e8860a;
+  --octane-glow: rgba(255, 158, 27, 0.18);
+
+  /* Brand tricolor (logo) */
+  --brand-blue: #29abe2;
+  --brand-red: #ed1c24;
+
+  /* Primary accent — brand blue (logo). Octane is kept for rare,
+     low-emphasis touches only (front-zone markers, "now"/"today"). */
+  --accent-50: #e9f7fe;
+  --accent-300: #7cc9f0;
+  --accent-500: #29abe2;
+  --accent-600: #178fc4;
+  --accent-glow: rgba(41, 171, 226, 0.2);
+
+  /* Status */
+  --status-success: #34d399;
+  --status-pending: #fbbf24;
+  --status-warning: #f87171;
+  --status-danger: #ef4444;
+  --status-info: #60a5fa;
+  --status-muted: #64748b;
+  --status-success-bg: rgba(52, 211, 153, 0.12);
+  --status-pending-bg: rgba(251, 191, 36, 0.12);
+  --status-warning-bg: rgba(248, 113, 113, 0.12);
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-info-bg: rgba(96, 165, 250, 0.12);
+  --status-muted-bg: rgba(100, 116, 139, 0.12);
+
+  /* Text */
+  --text-hi: #f7f9fb;
+  --text: #e8edf2;
+  --text-soft: #c2cad4;
+  --text-mut: #aeb7c2;
+  --text-dim: #8a93a0;
+  --text-faint: #64748b;
+  --text-ghost: #475569;
+
+  /* Typography */
+  --font-display: 'Clash Display', 'Satoshi', sans-serif;
+  --font-head: 'Satoshi', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Elevation */
+  --shadow-glow: 0 0 0 1px var(--border-subtle), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 3px var(--accent-glow);
+
+  /* Layout */
+  --content-max: 1200px;
+}

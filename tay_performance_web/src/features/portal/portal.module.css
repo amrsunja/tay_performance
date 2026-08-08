@@ -1,0 +1,403 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 52px 32px 90px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.kickerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.kickerLine {
+  width: 34px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand-blue), var(--brand-red));
+}
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-300);
+}
+
+.h1 {
+  font-weight: 600;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text-hi);
+}
+
+.lede {
+  font-size: 15px;
+  color: var(--text-mut);
+  margin: 14px 0 0;
+  max-width: 520px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-inset);
+  border-radius: 13px;
+  padding: 5px;
+}
+
+.tab {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: 9px;
+  transition: all 0.18s;
+}
+
+.tab:hover {
+  color: #fff;
+}
+
+.tabActive {
+  background: var(--surface-2);
+  color: var(--text-hi);
+  border: 1px solid var(--border-strong);
+}
+
+/* ---------- garage ---------- */
+.vehicleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.vehicleCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-well);
+  padding: 24px;
+  transition: transform 0.3s var(--ease), border-color 0.3s, background 0.3s;
+}
+
+.vehicleCard:hover {
+  transform: translateY(-6px);
+  border-color: var(--border-strong);
+  background: var(--surface-1);
+}
+
+.vehicleTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.vehicleBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #0a1730;
+  border: 1px solid #1d3a63;
+  color: var(--brand-blue);
+  font-size: 13px;
+}
+
+.vehicleTitle {
+  font-weight: 600;
+  font-size: 21px;
+  color: var(--text-hi);
+  margin: 0;
+}
+
+.vehicleSub {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.vehicleSpecs {
+  display: flex;
+  gap: 22px;
+  margin: 18px 0 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.vehicleSpecs div {
+  flex: 1;
+}
+
+.vehicleSpecs dt {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.vehicleSpecs dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.vehicleActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.addCard {
+  border: 1px dashed var(--border-strong);
+  border-radius: 18px;
+  background: none;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: inherit;
+  transition: border-color 0.25s, background 0.25s;
+  padding: 24px;
+}
+
+.addCard:hover {
+  border-color: var(--accent-500);
+  background: rgba(41, 171, 226, 0.05);
+}
+
+.addGhostCar {
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.addTitle {
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--text-soft);
+}
+
+.addSub {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ---------- bookings ---------- */
+.groupTitle {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 34px 0 16px;
+}
+
+.bookingList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bookingCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-well);
+  padding: 24px;
+}
+
+.bookingHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.bookingRef {
+  font-size: 11px;
+  color: var(--accent-500);
+}
+
+.bookingTitle {
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--text-hi);
+  margin: 6px 0 0;
+}
+
+.bookingWhen {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.bookingHeadRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.bookingPrice {
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--text-hi);
+}
+
+/* timeline */
+.timeline {
+  display: flex;
+  align-items: center;
+  margin: 20px 0 4px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.timelineStep {
+  display: flex;
+  align-items: center;
+}
+
+.timelineDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2a3340;
+  flex: none;
+}
+
+.timelineDotDone {
+  background: var(--status-success);
+}
+
+.timelineDotActive {
+  background: var(--accent-500);
+  box-shadow: 0 0 0 4px rgba(41, 171, 226, 0.2);
+}
+
+.timelineLabel {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin: 0 10px 0 7px;
+}
+
+.timelineBar {
+  width: 44px;
+  height: 1px;
+  background: #2a3340;
+  margin-right: 10px;
+}
+
+.timelineBarDone {
+  background: var(--status-success);
+}
+
+.bookingSpecs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.bookingNotes {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 14px 0 0;
+}
+
+.photoRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.photo {
+  margin: 0;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 150px;
+  height: 96px;
+  border: 1px solid var(--border-subtle);
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo figcaption {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: rgba(10, 12, 15, 0.72);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+.bookingActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.dangerLink {
+  background: none;
+  border: none;
+  color: var(--status-warning);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.85;
+}
+
+.dangerLink:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .main {
+    padding: 36px 16px 60px;
+  }
+  .h1 {
+    font-size: 32px;
+  }
+}
