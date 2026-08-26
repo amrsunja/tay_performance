@@ -1,0 +1,45 @@
+# Supabase CLI local configuration — Tay Performance backend
+project_id = "tay-performance"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 500
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+enable_anonymous_sign_ins = true
+minimum_password_length = 10
+
+[auth.email]
+enable_signup = false          # no self-serve email signup — admins are dashboard-created,
+enable_confirmations = true    # clients are anonymous (+ optional email linking via OTP)
+otp_expiry = 3600
+
+[auth.rate_limit]
+email_sent = 4                 # OTP / magic-link sends per hour
+anonymous_users = 30           # anonymous sign-ins per hour per IP
+
+[edge_runtime]
+enabled = true
+
+[functions.send-booking-email]
+verify_jwt = false             # called by Database Webhooks with x-webhook-secret
+
+[analytics]
+enabled = false

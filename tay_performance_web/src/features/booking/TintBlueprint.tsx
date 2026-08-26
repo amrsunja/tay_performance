@@ -1,5 +1,7 @@
 import baseFront from '../../assets/bmw_original_front.png'
-import { TINT_ZONES, DEMO_VEHICLE } from '../../data/mock'
+import frontWindshieldTint from '../../assets/bmw_front_window_tint.png'
+import frontSidesTint from '../../assets/bmw_front_right_left_windows_tint.png'
+import rearSidesTint from '../../assets/bmw_back_windows_tint.png'
 import type { TintZoneCode } from '../../types/domain'
 import styles from './booking.module.css'
 
@@ -7,13 +9,23 @@ import styles from './booking.module.css'
  * Paint order (bottom → top). The windshield PNG must sit ABOVE the front
  * side windows layer — otherwise the side-window film overlaps the
  * windshield glass on the 3/4 view.
+ * Layer assets are bundled frontend art (pixel-registered 1266×832) — they are
+ * intentionally NOT in the database (docs/01 §5).
  */
-const LAYER_ORDER: TintZoneCode[] = ['front_sides', 'rear_sides', 'pare_brise']
+const LAYERS: { code: TintZoneCode; src: string; front: boolean }[] = [
+  { code: 'front_sides', src: frontSidesTint, front: true },
+  { code: 'rear_sides', src: rearSidesTint, front: false },
+  { code: 'pare_brise', src: frontWindshieldTint, front: true },
+]
+
+const FRONT_ZONES: TintZoneCode[] = ['pare_brise', 'front_sides']
 
 interface TintBlueprintProps {
   selected: string[]
   frontVlt: number
   rearVlt: number
+  vehicleLabel: string
+  vehicleYears?: string
 }
 
 /** VLT 85 (clair) → 0 opacity · VLT 5 (foncé) → ~1 opacity */
@@ -22,18 +34,12 @@ export function opacityForVlt(vlt: number): number {
 }
 
 /**
- * Plan de pose — layered live preview.
- * The base photo is overlaid with one transparent PNG per tint zone
- * (pare-brise / vitres avant latérales / vitres arrière latérales),
- * pixel-registered on the same 1266×832 canvas. Each layer's opacity
- * is driven by its zone's selection + the group VLT slider.
+ * Plan de pose — layered live preview over the base vehicle photo.
+ * Each layer's opacity is driven by its zone's selection + the group VLT slider.
  */
-export default function TintBlueprint({ selected, frontVlt, rearVlt }: TintBlueprintProps) {
-  const layeredZones = LAYER_ORDER
-    .map((code) => TINT_ZONES.find((z) => z.code === code))
-    .filter((z): z is (typeof TINT_ZONES)[number] => Boolean(z?.layerSrc))
-  const frontOn = selected.some((code) => TINT_ZONES.find((z) => z.code === code)?.group === 'avant')
-  const rearOn = selected.some((code) => TINT_ZONES.find((z) => z.code === code)?.group !== 'avant')
+export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabel, vehicleYears }: TintBlueprintProps) {
+  const frontOn = selected.some((code) => FRONT_ZONES.includes(code as TintZoneCode))
+  const rearOn = selected.some((code) => !FRONT_ZONES.includes(code as TintZoneCode))
 
   return (
     <div className={styles.blueprint} data-reveal>
@@ -46,20 +52,21 @@ export default function TintBlueprint({ selected, frontVlt, rearVlt }: TintBluep
           PLAN DE POSE · FILMS TEINTÉS
         </span>
         <span className={`mono ${styles.bpLabel}`}>
-          {DEMO_VEHICLE.make} {DEMO_VEHICLE.generation} {DEMO_VEHICLE.model} · {DEMO_VEHICLE.years}
+          {vehicleLabel}
+          {vehicleYears ? ` · ${vehicleYears}` : ''}
         </span>
       </div>
 
       <div className={styles.bpStage}>
         <div className={styles.bpCanvas}>
-          <img src={baseFront} alt={`${DEMO_VEHICLE.make} ${DEMO_VEHICLE.model}`} className={styles.bpLayer} />
-          {layeredZones.map((zone) => {
-            const isSelected = selected.includes(zone.code)
-            const vlt = zone.group === 'avant' ? frontVlt : rearVlt
+          <img src={baseFront} alt={vehicleLabel} className={styles.bpLayer} />
+          {LAYERS.map((layer) => {
+            const isSelected = selected.includes(layer.code)
+            const vlt = layer.front ? frontVlt : rearVlt
             return (
               <img
-                key={zone.code}
-                src={zone.layerSrc}
+                key={layer.code}
+                src={layer.src}
                 alt=""
                 aria-hidden
                 className={styles.bpLayer}

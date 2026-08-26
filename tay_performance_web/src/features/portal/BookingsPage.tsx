@@ -1,11 +1,17 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
 import StatusPill from '../../components/ui/StatusPill'
 import { useReveal } from '../../hooks/useReveal'
-import { CLIENT_BOOKINGS, TINT_ZONES } from '../../data/mock'
-import type { Booking, BookingStatus } from '../../types/domain'
-import { formatDuration } from '../booking/useBookingDraft'
+import { useAuth } from '../../auth/AuthProvider'
+import { cancelBooking, getMyBookings, photoUrl, signInWithMagicLink } from '../../api/bookings'
+import { getCatalog } from '../../api/catalog'
+import { errorMessage, supabase } from '../../lib/supabase'
+import type { MyBookingRow } from '../../types/api'
+import type { BookingStatus } from '../../types/domain'
+import { formatDuration, formatEuro } from '../booking/useBookingDraft'
 import styles from './portal.module.css'
 
 const TIMELINE: BookingStatus[] = ['requested', 'confirmed', 'in_progress', 'completed']
@@ -16,9 +22,20 @@ const TIMELINE_LABELS: Record<string, string> = {
   completed: 'Terminé',
 }
 
-function zoneLabel(code: string) {
-  return TINT_ZONES.find((z) => z.code === code)?.labelFr ?? code
+const ZONE_LABELS: Record<string, string> = {
+  pare_brise: 'Pare-brise',
+  front_sides: 'Vitres avant latérales',
+  rear_sides: 'Vitres arrière latérales',
+  rear_window: 'Lunette arrière',
+  panoramic_roof: 'Toit panoramique',
 }
+
+const FRONT_ZONES = ['pare_brise', 'front_sides']
+
+const dateFmt = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris',
+})
+const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
 function Timeline({ status }: { status: BookingStatus }) {
   const activeIndex = TIMELINE.indexOf(status)
@@ -34,7 +51,10 @@ function Timeline({ status }: { status: BookingStatus }) {
               i === activeIndex ? styles.timelineDotActive : '',
             ].join(' ')}
           />
-          <span className={`mono ${styles.timelineLabel}`} style={i === activeIndex ? { color: 'var(--text-soft)' } : undefined}>
+          <span
+            className={`mono ${styles.timelineLabel}`}
+            style={i === activeIndex ? { color: 'var(--text-soft)' } : undefined}
+          >
             {TIMELINE_LABELS[step]}
           </span>
           {i < TIMELINE.length - 1 && (
@@ -46,33 +66,61 @@ function Timeline({ status }: { status: BookingStatus }) {
   )
 }
 
-function BookingCard({ booking, delay }: { booking: Booking; delay: number }) {
+function BookingPhoto({ path, kind }: { path: string; kind: 'before' | 'after' }) {
+  const url = useQuery({ queryKey: ['photo-url', path], queryFn: () => photoUrl(path), staleTime: 45 * 60_000 })
+  if (!url.data) return null
+  return (
+    <figure className={styles.photo}>
+      <img src={url.data} alt={kind === 'before' ? 'Avant la pose' : 'Après la pose'} />
+      <figcaption className="mono">{kind === 'before' ? 'AVANT' : 'APRÈS'}</figcaption>
+    </figure>
+  )
+}
+
+function BookingCard({
+  booking,
+  delay,
+  cutoffHours,
+  onCancel,
+  cancelPending,
+}: {
+  booking: MyBookingRow
+  delay: number
+  cutoffHours: number
+  onCancel: (id: string) => void
+  cancelPending: boolean
+}) {
+  const navigate = useNavigate()
+  const start = new Date(booking.slotStart)
+  const cancellable =
+    (booking.status === 'requested' || booking.status === 'confirmed') &&
+    Date.now() < start.getTime() - cutoffHours * 3600_000
+
   return (
     <article className={styles.bookingCard} data-reveal data-delay={delay}>
       <div className={styles.bookingHead}>
         <div>
           <span className={`mono ${styles.bookingRef}`}>{booking.reference}</span>
-          <h2 className={`sat ${styles.bookingTitle}`}>
-            {booking.vehicle.make} {booking.vehicle.generation} {booking.vehicle.model}
-          </h2>
+          <h2 className={`sat ${styles.bookingTitle}`}>{booking.vehicleLabel}</h2>
           <div className={`mono ${styles.bookingWhen}`}>
-            {booking.dateLabel} · {booking.timeLabel} · {formatDuration(booking.durationMin)}
+            {dateFmt.format(start)} · {timeFmt.format(start)} · {formatDuration(booking.durationMin)}
           </div>
         </div>
         <div className={styles.bookingHeadRight}>
           <StatusPill status={booking.status} />
-          <span className={`mono ${styles.bookingPrice}`}>{booking.priceTotal}€</span>
+          <span className={`mono ${styles.bookingPrice}`}>{formatEuro(booking.priceTotal)}</span>
         </div>
       </div>
 
-      {(booking.status === 'requested' || booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') && (
-        <Timeline status={booking.status} />
-      )}
+      {TIMELINE.includes(booking.status) && <Timeline status={booking.status} />}
 
       <div className={styles.bookingSpecs}>
         {booking.specs.map((spec) => (
-          <span key={spec.zone} className={`chip ${TINT_ZONES.find((z) => z.code === spec.zone)?.isFront ? 'chip--front' : 'chip--rear'}`}>
-            {zoneLabel(spec.zone)} · {spec.vltPercent}%
+          <span
+            key={spec.zone}
+            className={`chip ${FRONT_ZONES.includes(spec.zone) ? 'chip--front' : 'chip--rear'}`}
+          >
+            {ZONE_LABELS[spec.zone] ?? spec.zone} · {spec.vltPercent}%
           </span>
         ))}
         {booking.warrantyYears && (
@@ -84,13 +132,10 @@ function BookingCard({ booking, delay }: { booking: Booking; delay: number }) {
 
       {booking.clientNotes && <p className={styles.bookingNotes}>« {booking.clientNotes} »</p>}
 
-      {booking.photos && (
+      {booking.photos.length > 0 && (
         <div className={styles.photoRow}>
           {booking.photos.map((photo) => (
-            <figure key={photo.kind} className={styles.photo}>
-              <img src={photo.src} alt={photo.kind === 'before' ? 'Avant la pose' : 'Après la pose'} />
-              <figcaption className={`mono`}>{photo.kind === 'before' ? 'AVANT' : 'APRÈS'}</figcaption>
-            </figure>
+            <BookingPhoto key={photo.path} path={photo.path} kind={photo.kind} />
           ))}
         </div>
       )}
@@ -98,16 +143,31 @@ function BookingCard({ booking, delay }: { booking: Booking; delay: number }) {
       <div className={styles.bookingActions}>
         {(booking.status === 'requested' || booking.status === 'confirmed') && (
           <>
-            <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}>
+            <button
+              type="button"
+              className="ghost"
+              style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
+              onClick={() => navigate(`/reserver?reschedule=${booking.id}`)}
+            >
               Reprogrammer
             </button>
-            <button type="button" className={styles.dangerLink}>
-              Annuler (≥24h avant)
+            <button
+              type="button"
+              className={styles.dangerLink}
+              disabled={!cancellable || cancelPending}
+              title={cancellable ? undefined : `Annulation possible jusqu'à ${cutoffHours}h avant`}
+              onClick={() => onCancel(booking.id)}
+            >
+              Annuler (≥{cutoffHours}h avant)
             </button>
           </>
         )}
         {booking.status === 'completed' && (
-          <Link to="/reserver" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}>
+          <Link
+            to={`/reserver?variant=${booking.variantId}`}
+            className="ghost"
+            style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
+          >
             Re-réserver cette pose
           </Link>
         )}
@@ -118,8 +178,50 @@ function BookingCard({ booking, delay }: { booking: Booking; delay: number }) {
 
 export default function BookingsPage() {
   useReveal()
-  const upcoming = CLIENT_BOOKINGS.filter((b) => b.status === 'requested' || b.status === 'confirmed' || b.status === 'in_progress')
-  const past = CLIENT_BOOKINGS.filter((b) => !upcoming.includes(b))
+  const { session, isAnonymous } = useAuth()
+  const queryClient = useQueryClient()
+  const [error, setError] = useState('')
+  const [recoverEmail, setRecoverEmail] = useState('')
+  const [recoverSent, setRecoverSent] = useState(false)
+
+  const bookings = useQuery({
+    queryKey: ['my-bookings'],
+    queryFn: getMyBookings,
+    enabled: Boolean(session),
+  })
+  const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 5 * 60_000 })
+  const cutoffHours = catalog.data?.settings.cancellationCutoffHours ?? 24
+
+  // realtime: own booking rows (RLS-scoped) → refresh statuses live
+  useEffect(() => {
+    if (!session) return
+    const channel = supabase
+      .channel('my-bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session, queryClient])
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => cancelBooking(id),
+    onSuccess: () => {
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
+
+  const onCancel = (id: string) => {
+    if (window.confirm('Annuler ce rendez-vous ?')) cancelMutation.mutate(id)
+  }
+
+  const list = bookings.data ?? []
+  const upcoming = list.filter((b) => b.status === 'requested' || b.status === 'confirmed' || b.status === 'in_progress')
+  const past = list.filter((b) => !upcoming.includes(b))
 
   return (
     <div className={styles.page}>
@@ -145,23 +247,110 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        <h2 className={`sat ${styles.groupTitle}`} data-reveal>
-          À venir
-        </h2>
-        <div className={styles.bookingList}>
-          {upcoming.map((booking, i) => (
-            <BookingCard key={booking.id} booking={booking} delay={i * 90} />
-          ))}
-        </div>
+        {error && (
+          <div style={{ color: 'var(--status-warning)', fontSize: 14, marginBottom: 16 }} role="alert">
+            {error}
+          </div>
+        )}
 
-        <h2 className={`sat ${styles.groupTitle}`} data-reveal>
-          Historique
-        </h2>
-        <div className={styles.bookingList}>
-          {past.map((booking, i) => (
-            <BookingCard key={booking.id} booking={booking} delay={i * 90} />
-          ))}
-        </div>
+        {list.length === 0 && !bookings.isPending && (
+          <div
+            data-reveal
+            style={{
+              padding: 24,
+              borderRadius: 16,
+              border: '1px dashed var(--border-strong)',
+              background: 'var(--surface-inset)',
+              display: 'grid',
+              gap: 12,
+              maxWidth: 560,
+            }}
+          >
+            <span style={{ color: 'var(--text-soft)', fontSize: 15 }}>
+              Aucune réservation sur cet appareil.
+            </span>
+            {isAnonymous && (
+              <>
+                <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+                  Vous aviez lié un e-mail ? Recevez un lien magique pour retrouver votre historique.
+                </span>
+                {recoverSent ? (
+                  <span style={{ color: 'var(--status-success)', fontSize: 14 }}>✓ Lien envoyé — vérifiez votre boîte mail.</span>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <input
+                      className="field"
+                      type="email"
+                      placeholder="votre@email.fr"
+                      value={recoverEmail}
+                      onChange={(e) => setRecoverEmail(e.target.value)}
+                      style={{ flex: 1, minWidth: 200 }}
+                    />
+                    <button
+                      type="button"
+                      className="ghost"
+                      style={{ fontSize: 13, padding: '11px 18px', borderRadius: 11 }}
+                      disabled={!recoverEmail.includes('@')}
+                      onClick={async () => {
+                        try {
+                          await signInWithMagicLink(recoverEmail)
+                          setRecoverSent(true)
+                        } catch (e) {
+                          setError(errorMessage(e))
+                        }
+                      }}
+                    >
+                      Recevoir le lien
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+            <Link to="/reserver" className="cta" style={{ fontSize: 14, padding: '12px 20px', borderRadius: 12, justifySelf: 'start' }}>
+              Réserver une pose →
+            </Link>
+          </div>
+        )}
+
+        {upcoming.length > 0 && (
+          <>
+            <h2 className={`sat ${styles.groupTitle}`} data-reveal>
+              À venir
+            </h2>
+            <div className={styles.bookingList}>
+              {upcoming.map((booking, i) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  delay={i * 90}
+                  cutoffHours={cutoffHours}
+                  onCancel={onCancel}
+                  cancelPending={cancelMutation.isPending}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {past.length > 0 && (
+          <>
+            <h2 className={`sat ${styles.groupTitle}`} data-reveal>
+              Historique
+            </h2>
+            <div className={styles.bookingList}>
+              {past.map((booking, i) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  delay={i * 90}
+                  cutoffHours={cutoffHours}
+                  onCancel={onCancel}
+                  cancelPending={cancelMutation.isPending}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </main>
       <SiteFooter />
     </div>

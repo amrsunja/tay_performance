@@ -1,17 +1,16 @@
 import type { Dispatch } from 'react'
 import { FRONT_LEGAL_MIN_VLT, type TintZoneCode } from '../../types/domain'
-import { TINT_ZONES, DEMO_VEHICLE } from '../../data/mock'
+import type { CatalogZone, ResolvedVehicle } from '../../types/api'
 import TintBlueprint from './TintBlueprint'
-import { formatDuration, type DraftAction, type DraftState } from './useBookingDraft'
-import type { useBookingDraft } from './useBookingDraft'
+import { formatDuration, formatEuro, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
 import styles from './booking.module.css'
-
-type Quote = ReturnType<typeof useBookingDraft>['quote']
 
 interface StepProps {
   state: DraftState
   dispatch: Dispatch<DraftAction>
-  quote: Quote
+  quote: LocalQuote
+  zones: CatalogZone[]
+  vehicle: ResolvedVehicle
 }
 
 const PRESETS: { label: string; zones: TintZoneCode[] }[] = [
@@ -21,7 +20,9 @@ const PRESETS: { label: string; zones: TintZoneCode[] }[] = [
   { label: 'Effacer', zones: [] },
 ]
 
-export default function ConfigStep({ state, dispatch, quote }: StepProps) {
+export default function ConfigStep({ state, dispatch, quote, zones, vehicle }: StepProps) {
+  const canContinue = quote.lines.length > 0 && (!quote.nonCompliant || state.ack)
+
   return (
     <section className={styles.step}>
       <div className={styles.stepInner}>
@@ -40,23 +41,33 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
             </p>
           </div>
           <div className={styles.vehicleChip}>
-            <span className={`mono ${styles.vehicleBadge}`}>{DEMO_VEHICLE.badge}</span>
+            <span className={`mono ${styles.vehicleBadge}`}>{vehicle.badge}</span>
             <span>
               <span className={`sat ${styles.vehicleName}`}>
-                {DEMO_VEHICLE.make} {DEMO_VEHICLE.generation} {DEMO_VEHICLE.model}
+                {vehicle.make} {vehicle.generation} {vehicle.model}
               </span>
               <span className={`mono ${styles.vehicleMeta}`}>
-                {DEMO_VEHICLE.bodyLabel} · {DEMO_VEHICLE.years}
+                {vehicle.bodyLabel} · {vehicle.years}
               </span>
             </span>
-            <button type="button" className={`navlink mono ${styles.vehicleChange}`}>
+            <button
+              type="button"
+              className={`navlink mono ${styles.vehicleChange}`}
+              onClick={() => dispatch({ type: 'changeVehicle' })}
+            >
               changer →
             </button>
           </div>
         </div>
 
         <div className={styles.configGrid}>
-          <TintBlueprint selected={state.selected} frontVlt={state.frontVlt} rearVlt={state.rearVlt} />
+          <TintBlueprint
+            selected={state.selected}
+            frontVlt={state.frontVlt}
+            rearVlt={state.rearVlt}
+            vehicleLabel={`${vehicle.make} ${vehicle.generation} ${vehicle.model}`}
+            vehicleYears={vehicle.years}
+          />
 
           <div data-reveal className={styles.panel}>
             {/* ---------- VLT sliders ---------- */}
@@ -160,8 +171,10 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
                 ))}
               </div>
               <div className={styles.zoneList}>
-                {TINT_ZONES.map((zone) => {
+                {zones.map((zone) => {
                   const on = state.selected.includes(zone.code)
+                  const vlt = zone.group === 'avant' ? state.frontVlt : state.rearVlt
+                  const price = zone.deltas[vlt] ?? zone.price
                   return (
                     <button
                       key={zone.code}
@@ -184,14 +197,14 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
                           {zone.group === 'avant' ? 'AVANT' : zone.group === 'arriere' ? 'ARRIÈRE' : 'OPTION'}
                         </span>
                       </span>
-                      <span className={`mono ${styles.zonePrice}`}>{zone.price}€</span>
+                      <span className={`mono ${styles.zonePrice}`}>{formatEuro(price)}</span>
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            {/* ---------- legal warning ---------- */}
+            {/* ---------- legal warning + explicit acknowledgement ---------- */}
             {quote.nonCompliant && (
               <div className={styles.warnBox} role="alert">
                 <span style={{ fontSize: 20 }} aria-hidden>
@@ -200,11 +213,21 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
                 <span className={styles.warnText}>
                   <b>Avant non conforme.</b> La loi française impose ≥{FRONT_LEGAL_MIN_VLT}% VLT à l'avant. En dessous,
                   le véhicule est verbalisable (135€, −3 points). On peut poser, mais hors-conformité.
+                  <label
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={state.ack}
+                      onChange={(e) => dispatch({ type: 'setAck', value: e.target.checked })}
+                    />
+                    J'accepte la pose hors conformité (usage circuit/privé)
+                  </label>
                 </span>
               </div>
             )}
 
-            {/* ---------- quote summary ---------- */}
+            {/* ---------- quote summary (full formula — docs/04 §3) ---------- */}
             <div className={styles.summaryCard}>
               <div className={styles.summaryGlow} aria-hidden />
               <div className={`sat ${styles.summaryTitle}`}>Devis</div>
@@ -214,19 +237,35 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
                     Aucune vitre sélectionnée — choisissez un pack ou cliquez une zone.
                   </div>
                 )}
+                {quote.lines.length > 0 && (
+                  <div className={styles.summaryLine}>
+                    <span>
+                      Base {vehicle.bodyLabel.toLowerCase()}
+                    </span>
+                    <span className="mono">{formatEuro(quote.base)}</span>
+                  </div>
+                )}
                 {quote.lines.map((line) => (
                   <div key={line.zone.code} className={styles.summaryLine}>
                     <span>
                       {line.zone.labelFr}{' '}
                       <span className={`mono ${styles.summaryVlt}`}>· {line.vlt}%</span>
                     </span>
-                    <span className="mono">{line.price}€</span>
+                    <span className="mono">{formatEuro(line.price)}</span>
                   </div>
                 ))}
+                {quote.lines.length > 0 && (
+                  <div className={styles.summaryLine}>
+                    <span>
+                      Main d'œuvre <span className={`mono ${styles.summaryVlt}`}>· {quote.minutes} min</span>
+                    </span>
+                    <span className="mono">{formatEuro(quote.labor)}</span>
+                  </div>
+                )}
                 {quote.limoSupplement > 0 && (
                   <div className={styles.summaryLine} style={{ color: 'var(--octane-300)' }}>
                     <span>Film limousine (haute précision)</span>
-                    <span className="mono">+{quote.limoSupplement}€</span>
+                    <span className="mono">+{formatEuro(quote.limoSupplement)}</span>
                   </div>
                 )}
               </div>
@@ -237,13 +276,13 @@ export default function ConfigStep({ state, dispatch, quote }: StepProps) {
               </div>
               <div className={styles.summaryTotalRow}>
                 <span className={`sat ${styles.summaryTotalLabel}`}>Total estimé</span>
-                <span className={`mono ${styles.summaryTotal}`}>{quote.total}€</span>
+                <span className={`mono ${styles.summaryTotal}`}>{formatEuro(quote.total)}</span>
               </div>
               <button
                 type="button"
                 className="cta"
                 style={{ width: '100%', marginTop: 16, fontSize: 16, padding: 16, borderRadius: 13 }}
-                disabled={quote.lines.length === 0}
+                disabled={!canContinue}
                 onClick={() => dispatch({ type: 'goStep', step: 'calendar' })}
               >
                 Réserver mon créneau <span style={{ fontSize: 18 }}>→</span>

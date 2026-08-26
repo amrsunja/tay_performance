@@ -1,5 +1,10 @@
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import logo from '../../assets/logo.svg'
+import { useAuth } from '../../auth/AuthProvider'
+import { getCatalog } from '../../api/catalog'
+import NewBookingModal from './NewBookingModal'
 import styles from './admin.module.css'
 
 const NAV = [
@@ -18,6 +23,12 @@ function todayLabel() {
 }
 
 export default function AdminLayout() {
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
+  const [creating, setCreating] = useState(false)
+  const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 5 * 60_000 })
+  const bayCount = catalog.data?.settings.bayCount ?? 1
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -41,8 +52,20 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className={styles.sidebarFoot}>
-          <span className={`mono ${styles.sidebarFootLine}`}>Baie 1 · 09:00–18:00</span>
-          <span className={`mono ${styles.sidebarFootLine}`}>Illkirch · 67400</span>
+          <span className={`mono ${styles.sidebarFootLine}`}>
+            {bayCount > 1 ? `${bayCount} baies` : 'Baie 1'} · Illkirch 67400
+          </span>
+          <button
+            type="button"
+            className={`mono ${styles.sidebarFootLine}`}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, color: 'var(--text-faint)' }}
+            onClick={async () => {
+              await signOut()
+              navigate('/admin/login', { replace: true })
+            }}
+          >
+            ↩ Déconnexion
+          </button>
         </div>
       </aside>
 
@@ -56,10 +79,19 @@ export default function AdminLayout() {
             <label className={`mono ${styles.baySelect}`}>
               BAIE
               <select className={styles.baySelectField} defaultValue="1" aria-label="Sélection de la baie">
-                <option value="1">Baie 1</option>
+                {Array.from({ length: bayCount }).map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Baie {i + 1}
+                  </option>
+                ))}
               </select>
             </label>
-            <button type="button" className="cta" style={{ fontSize: 13, padding: '10px 18px', borderRadius: 11 }}>
+            <button
+              type="button"
+              className="cta"
+              style={{ fontSize: 13, padding: '10px 18px', borderRadius: 11 }}
+              onClick={() => setCreating(true)}
+            >
               + Nouvelle réservation
             </button>
           </div>
@@ -68,6 +100,8 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {creating && <NewBookingModal onClose={() => setCreating(false)} />}
     </div>
   )
 }
