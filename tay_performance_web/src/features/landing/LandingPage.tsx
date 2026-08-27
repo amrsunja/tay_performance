@@ -5,7 +5,10 @@ import SiteFooter from '../../components/layout/SiteFooter'
 import SectionTag from '../../components/ui/SectionTag'
 import CountUp from '../../components/ui/CountUp'
 import { useReveal } from '../../hooks/useReveal'
+import SocialSection from './SocialSection'
 import heroImg from '../../assets/visuel3.jpg'
+import introVideo from '../../assets/videos/intro.mp4'
+import introVideo2 from '../../assets/videos/intro2.mp4'
 import visuel1 from '../../assets/visuel1.jpg'
 import visuel2 from '../../assets/visuel2.jpg'
 import visuel4 from '../../assets/visuel4.jpg'
@@ -60,6 +63,17 @@ export default function LandingPage() {
       <section className={styles.hero}>
         <div ref={parallaxRef} className={styles.heroParallax}>
           <img src={heroImg} alt="" className={styles.heroImg} />
+        </div>
+        {/* intro videos flanking the bg image (hidden ≤960px) */}
+        <div className={styles.heroSideVideos} aria-hidden>
+          <div className={`${styles.heroSide} ${styles.heroSideLeft}`}>
+            <video src={introVideo} autoPlay muted loop playsInline preload="auto" />
+            <span className={styles.heroSideTint} />
+          </div>
+          <div className={`${styles.heroSide} ${styles.heroSideRight}`}>
+            <video src={introVideo2} autoPlay muted loop playsInline preload="auto" />
+            <span className={styles.heroSideTint} />
+          </div>
         </div>
         <div className={styles.heroShadeX} />
         <div className={styles.heroShadeY} />
@@ -233,6 +247,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ============ SOCIAL ============ */}
+      <SocialSection />
 
       {/* ============ CONFORMITE ============ */}
       <section id="conformite" className={styles.section}>
