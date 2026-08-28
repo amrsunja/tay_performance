@@ -224,6 +224,8 @@ export interface MyBookingRow {
   contactName: string
   /** booked by this profile for another person (contactName = that person) */
   forOther: boolean
+  /** the workshop adjusted the price (see history) */
+  priceOverridden: boolean
   vehicleLabel: string
   bodyLabel: string
   badge: string

@@ -13,6 +13,7 @@ import {
   getBookingPhotos,
   getStatusHistory,
   issueWarranty,
+  setBookingPrice,
   saveAdminNotes,
   uploadBookingPhoto,
 } from '../../api/admin'
@@ -29,6 +30,20 @@ const NEXT_STATUSES: Record<string, BookingStatus[]> = {
   completed: [],
   cancelled: [],
   no_show: [],
+}
+/** one step back / re-open (mirrors _transition_allowed in 0014) */
+const BACK_STATUSES: Record<string, BookingStatus[]> = {
+  requested: [],
+  confirmed: ['requested'],
+  in_progress: ['confirmed'],
+  completed: ['in_progress'],
+  cancelled: ['requested', 'confirmed'],
+  no_show: ['confirmed'],
+}
+const BACK_LABELS: Record<string, string> = {
+  requested: '← Remettre en attente',
+  confirmed: '← Revenir à confirmé',
+  in_progress: '← Rouvrir la pose',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -98,10 +113,26 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
   }
 
   const statusMutation = useMutation({
-    mutationFn: ({ to }: { to: BookingStatus }) => advanceStatus(bookingId, to),
+    mutationFn: ({ to, note }: { to: BookingStatus; note?: string }) => advanceStatus(bookingId, to, note),
     onSuccess: invalidateAll,
     onError: (e) => setError(errorMessage(e)),
   })
+
+  // price editor
+  const [editingPrice, setEditingPrice] = useState(false)
+  const [priceInput, setPriceInput] = useState('')
+  const [priceReason, setPriceReason] = useState('')
+  const priceMutation = useMutation({
+    mutationFn: () => setBookingPrice(bookingId, Number(priceInput.replace(',', '.')), priceReason.trim() || null),
+    onSuccess: () => {
+      setEditingPrice(false)
+      setPriceReason('')
+      invalidateAll()
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
+  const parsedPrice = Number(priceInput.replace(',', '.'))
+  const priceOk = priceInput.trim() !== '' && Number.isFinite(parsedPrice) && parsedPrice >= 0
 
   const notesMutation = useMutation({
     mutationFn: () => saveAdminNotes(bookingId, notes, session!.user.id),
@@ -229,9 +260,75 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
               ))}
             </div>
 
+            {/* price — editable by the admin, every change lands in the history */}
+            <div style={{ padding: 14, borderRadius: 12, background: 'var(--surface-2)', display: 'grid', gap: 8 }}>
+              {!editingPrice ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>PRIX </span>
+                    <span className="mono" style={{ fontSize: 16, color: 'var(--text)' }}>{formatEuro(b.priceTotal)}</span>
+                    {b.priceOverridden && (
+                      <span className="mono" style={{ fontSize: 11, color: 'var(--octane-300)', marginLeft: 8 }}>modifié</span>
+                    )}
+                  </span>
+                  {b.status !== 'cancelled' && b.status !== 'no_show' && (
+                    <button
+                      type="button"
+                      className="ghost"
+                      style={{ fontSize: 12, padding: '7px 12px', borderRadius: 9 }}
+                      onClick={() => {
+                        setPriceInput(b.priceTotal.toFixed(2))
+                        setEditingPrice(true)
+                      }}
+                    >
+                      Modifier le prix
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="field mono"
+                        inputMode="decimal"
+                        value={priceInput}
+                        onChange={(e) => setPriceInput(e.target.value.replace(/[^\d.,]/g, ''))}
+                        aria-label="Nouveau prix (€)"
+                        autoFocus
+                        style={{ width: 140, paddingRight: 30 }}
+                      />
+                      <span className="mono" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-dim)' }}>€</span>
+                    </div>
+                    <input
+                      className="field"
+                      placeholder="Motif (visible par le client) — ex : geste commercial"
+                      value={priceReason}
+                      onChange={(e) => setPriceReason(e.target.value)}
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="cta"
+                      style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
+                      disabled={!priceOk || priceMutation.isPending || parsedPrice === b.priceTotal}
+                      onClick={() => priceMutation.mutate()}
+                    >
+                      {priceMutation.isPending ? 'Enregistrement…' : 'Appliquer le nouveau prix'}
+                    </button>
+                    <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setEditingPrice(false)}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* transitions */}
-            {NEXT_STATUSES[b.status].length > 0 && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {(NEXT_STATUSES[b.status].length > 0 || BACK_STATUSES[b.status].length > 0) && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {NEXT_STATUSES[b.status].map((to) => (
                   <button
                     key={to}
@@ -242,6 +339,19 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                     onClick={() => statusMutation.mutate({ to })}
                   >
                     {STATUS_LABELS[to]}
+                  </button>
+                ))}
+                {BACK_STATUSES[b.status].map((to) => (
+                  <button
+                    key={`back-${to}`}
+                    type="button"
+                    className="navlink mono"
+                    style={{ fontSize: 12, marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 4px' }}
+                    disabled={statusMutation.isPending}
+                    title="Retour en arrière — le créneau est re-vérifié"
+                    onClick={() => statusMutation.mutate({ to, note: 'retour en arrière' })}
+                  >
+                    {BACK_LABELS[to] ?? `← ${STATUS_LABELS[to]}`}
                   </button>
                 ))}
               </div>

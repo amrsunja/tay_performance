@@ -282,6 +282,44 @@ begin
   end if;
 end $$;
 
+-- T6c — price change on an existing booking (0014) + step back in the lifecycle
+do $$
+declare bid uuid; r jsonb; n int; st public.booking_status;
+begin
+  select id into bid from public.bookings where contact_name = 'Walk-in Client' limit 1;
+  r := public.admin_set_booking_price(bid, 150.00, 'geste commercial');
+  if not (r->>'changed')::boolean or (r->>'price_total')::numeric <> 150.00 then
+    raise exception 'T6c price not applied: %', r;
+  end if;
+  select count(*) into n from public.booking_status_history
+    where booking_id = bid and note like 'price|%|150.00|geste commercial';
+  if n <> 1 then raise exception 'T6c history row missing'; end if;
+  if not exists (select 1 from public.bookings where id = bid and price_overridden
+                   and (price_breakdown->>'computed_total')::numeric <> 150.00) then
+    raise exception 'T6c breakdown not updated';
+  end if;
+  -- same price again → no-op, no extra row
+  r := public.admin_set_booking_price(bid, 150.00, null);
+  if (r->>'changed')::boolean then raise exception 'T6c no-op expected'; end if;
+
+  -- step back: confirmed → requested, then forward again
+  perform public.set_booking_status(bid, 'requested', 'retour en arrière');
+  select status into st from public.bookings where id = bid;
+  if st <> 'requested' then raise exception 'T6c back-step failed: %', st; end if;
+  perform public.set_booking_status(bid, 'confirmed', null);
+  -- completed → in_progress allowed, requested → in_progress still not
+  begin
+    perform public.set_booking_status(bid, 'requested', null);
+    perform public.set_booking_status(bid, 'in_progress', null);
+    raise exception 'T6c requested→in_progress accepted';
+  exception when others then
+    if sqlerrm <> 'ILLEGAL_TRANSITION' then raise; end if;
+  end;
+  -- the failed sub-block rolled back to 'confirmed'
+  select status into st from public.bookings where id = bid;
+  if st <> 'confirmed' then raise exception 'T6c expected confirmed after rollback, got %', st; end if;
+end $$;
+
 insert into public.booking_admin_notes (booking_id, notes, updated_by)
 values (current_setting('test.booking_a')::uuid, 'note interne — jamais visible client', auth.uid());
 

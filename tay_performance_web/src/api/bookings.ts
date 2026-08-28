@@ -1,6 +1,6 @@
 /* Client bookings: server quote, creation, my bookings, cancel, reschedule. */
 import { supabase } from '../lib/supabase'
-import type { CreatedBooking, MyBookingRow, QuoteSpec, ServerQuote } from '../types/api'
+import type { CreatedBooking, MyBookingRow, QuoteSpec, ServerQuote, StatusHistoryRow } from '../types/api'
 import type { BookingStatus, LegalFlag, TintZoneCode } from '../types/domain'
 
 export async function quoteBooking(variantId: string, specs: QuoteSpec[]): Promise<ServerQuote> {
@@ -77,6 +77,7 @@ interface BookingSelectRow {
   variant_id: string
   contact_name: string
   for_other: boolean
+  price_overridden: boolean
   booking_tint_specs: { zone_code: string; vlt_percent: number; price_delta: number; is_legal: boolean }[]
   bookings_warranty: { warranty_years: number } | null
   booking_photos: { kind: string; storage_path: string }[]
@@ -88,7 +89,7 @@ interface BookingSelectRow {
 }
 
 const BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
-  price_total, client_notes, variant_id, contact_name, for_other,
+  price_total, client_notes, variant_id, contact_name, for_other, price_overridden,
   booking_tint_specs(zone_code, vlt_percent, price_delta, is_legal),
   bookings_warranty(warranty_years),
   booking_photos(kind, storage_path),
@@ -112,6 +113,7 @@ function mapBookingRow(b: BookingSelectRow): MyBookingRow {
     variantId: b.variant_id,
     contactName: b.contact_name,
     forOther: Boolean(b.for_other),
+    priceOverridden: Boolean(b.price_overridden),
     vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
     bodyLabel: chain?.body_styles?.label_fr ?? '',
     badge: (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
@@ -124,6 +126,22 @@ function mapBookingRow(b: BookingSelectRow): MyBookingRow {
     warrantyYears: b.bookings_warranty ? Number(b.bookings_warranty.warranty_years) : null,
     photos: (b.booking_photos ?? []).map((p) => ({ kind: p.kind as 'before' | 'after', path: p.storage_path })),
   }
+}
+
+/** Status / price history of one of my bookings (RLS restricts to own rows). */
+export async function getMyBookingHistory(bookingId: string): Promise<StatusHistoryRow[]> {
+  const { data, error } = await supabase
+    .from('booking_status_history')
+    .select('from_status, to_status, changed_at, note')
+    .eq('booking_id', bookingId)
+    .order('changed_at')
+  if (error) throw error
+  return (data ?? []).map((h) => ({
+    fromStatus: (h.from_status as BookingStatus | null) ?? null,
+    toStatus: h.to_status as BookingStatus,
+    changedAt: h.changed_at as string,
+    note: (h.note as string | null) ?? null,
+  }))
 }
 
 export async function getMyBookings(): Promise<MyBookingRow[]> {

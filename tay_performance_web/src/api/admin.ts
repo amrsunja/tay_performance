@@ -107,6 +107,15 @@ export async function advanceStatus(bookingId: string, to: BookingStatus, note?:
   if (error) throw error
 }
 
+export async function setBookingPrice(bookingId: string, price: number, reason?: string | null): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_booking_price', {
+    p_booking_id: bookingId,
+    p_price: price,
+    p_reason: reason ?? null,
+  })
+  if (error) throw error
+}
+
 export async function getStatusHistory(bookingId: string): Promise<StatusHistoryRow[]> {
   const { data, error } = await supabase
     .from('booking_status_history')

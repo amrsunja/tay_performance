@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
-import StatusPill from '../../components/ui/StatusPill'
+import StatusPill, { describeTransition, parsePriceNote } from '../../components/ui/StatusPill'
 import { useReveal } from '../../hooks/useReveal'
 import { useAuth } from '../../auth/AuthProvider'
-import { cancelBooking, getMyBookings, photoUrl } from '../../api/bookings'
+import { cancelBooking, getMyBookingHistory, getMyBookings, photoUrl } from '../../api/bookings'
 import { getCatalog } from '../../api/catalog'
 import { errorMessage, supabase } from '../../lib/supabase'
 import type { MyBookingRow } from '../../types/api'
@@ -92,6 +92,14 @@ function BookingCard({
 }) {
   const navigate = useNavigate()
   const start = new Date(booking.slotStart)
+  const [showHistory, setShowHistory] = useState(false)
+  const history = useQuery({
+    queryKey: ['my-booking-history', booking.id],
+    queryFn: () => getMyBookingHistory(booking.id),
+    enabled: showHistory || booking.priceOverridden,
+    staleTime: 30_000,
+  })
+  const lastPriceChange = [...(history.data ?? [])].reverse().find((h) => parsePriceNote(h.note))
   const cancellable =
     (booking.status === 'requested' || booking.status === 'confirmed') &&
     Date.now() < start.getTime() - cutoffHours * 3600_000
@@ -114,6 +122,15 @@ function BookingCard({
         <div className={styles.bookingHeadRight}>
           <StatusPill status={booking.status} />
           <span className={`mono ${styles.bookingPrice}`}>{formatEuro(booking.priceTotal)}</span>
+          {booking.priceOverridden && lastPriceChange && (
+            <span className="mono" style={{ fontSize: 11, color: 'var(--octane-300)', textAlign: 'right' }}>
+              prix ajusté par l'atelier
+              {(() => {
+                const pc = parsePriceNote(lastPriceChange.note)
+                return pc ? ` (avant : ${formatEuro(pc.from)}${pc.reason ? ` — ${pc.reason}` : ''})` : ''
+              })()}
+            </span>
+          )}
         </div>
       </div>
 
@@ -136,6 +153,33 @@ function BookingCard({
       </div>
 
       {booking.clientNotes && <p className={styles.bookingNotes}>« {booking.clientNotes} »</p>}
+
+      {/* history — status changes and price adjustments, same wording as the admin panel */}
+      <div style={{ display: 'grid', gap: 6 }}>
+        <button
+          type="button"
+          className="navlink mono"
+          style={{ fontSize: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer', justifySelf: 'start' }}
+          aria-expanded={showHistory}
+          onClick={() => setShowHistory((v) => !v)}
+        >
+          {showHistory ? 'Masquer l\'historique' : 'Voir l\'historique'}
+        </button>
+        {showHistory &&
+          (history.data ?? []).map((h, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                {new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(new Date(h.changedAt))}
+              </span>
+              <span style={{ color: parsePriceNote(h.note) ? 'var(--octane-300)' : 'var(--text-soft)' }}>
+                {describeTransition(h.fromStatus, h.toStatus, h.note)}
+              </span>
+            </div>
+          ))}
+        {showHistory && !history.isPending && (history.data ?? []).length === 0 && (
+          <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>Aucun événement.</span>
+        )}
+      </div>
 
       {booking.photos.length > 0 && (
         <div className={styles.photoRow}>
