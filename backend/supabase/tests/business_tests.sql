@@ -100,6 +100,21 @@ begin
   if (h->>'hold_id') is null then raise exception 'T4 hold failed'; end if;
 end $$;
 
+-- email is REQUIRED (0008): booking without it must be rejected
+do $$
+declare hid uuid;
+begin
+  select id into hid from public.booking_holds limit 1;
+  begin
+    perform public.create_booking(hid, current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      'Karim Test', '0612440931', null, null, false, null);
+    raise exception 'T4 missing email accepted';
+  exception when others then
+    if sqlerrm <> 'INVALID_CONTACT' then raise; end if;
+  end;
+end $$;
+
 -- illegal spec without ack must be rejected
 do $$
 declare hid uuid;
@@ -108,7 +123,7 @@ begin
   begin
     perform public.create_booking(hid, current_setting('test.variant_id')::uuid,
       '[{"zone_code":"front_sides","vlt_percent":50}]',
-      'Karim Test', '0612440931', null, null, false, null);
+      'Karim Test', '0612440931', 'karim@test.local', null, false, null);
     raise exception 'T4 illegal spec accepted without ack';
   exception when others then
     if sqlerrm <> 'ILLEGAL_SPEC_REQUIRES_ACK' then raise; end if;
@@ -133,6 +148,18 @@ declare n int;
 begin
   select count(*) into n from public.booking_holds;
   if n <> 0 then raise exception 'T4 hold not consumed'; end if;
+  select count(*) into n from public.vehicles where user_id = auth.uid();
+  if n <> 1 then raise exception 'T4 vehicle not auto-added to garage: %', n; end if;
+end $$;
+
+-- profile is always synced with the booking contact (0008)
+do $$
+declare p record;
+begin
+  select full_name, phone, email into p from public.profiles where id = auth.uid();
+  if p.full_name <> 'Karim Test' or p.phone <> '0612440931' or p.email <> 'karim@test.local' then
+    raise exception 'T4 profile not synced: % % %', p.full_name, p.phone, p.email;
+  end if;
 end $$;
 
 reset role;
@@ -275,7 +302,7 @@ begin
   h := public.hold_slot(s, 60, 1);
   b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
     '[{"zone_code":"rear_window","vlt_percent":35}]',
-    'Sophie Test', '0768207745', null, null, false, null);
+    'Sophie Test', '0768207745', 'sophie@test.local', null, false, null);
   perform public.cancel_booking_client((b->>'id')::uuid, 'changement de plan');
 end $$;
 reset role;
@@ -291,7 +318,7 @@ begin
   h := public.hold_slot(s, 60, 1);
   b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
     '[{"zone_code":"rear_window","vlt_percent":35}]',
-    'Sophie Test', '0768207745', null, null, false, null);
+    'Sophie Test', '0768207745', 'sophie@test.local', null, false, null);
   begin
     perform public.cancel_booking_client((b->>'id')::uuid, null);
     raise exception 'T7 cutoff not enforced';
@@ -321,7 +348,7 @@ begin
   begin
     perform public.create_booking(hid, current_setting('test.variant_id')::uuid,
       '[{"zone_code":"rear_window","vlt_percent":35}]',
-      'Karim Test', '0612440931', null, null, false, null);
+      'Karim Test', '0612440931', 'karim@test.local', null, false, null);
     raise exception 'T8 create with released hold accepted';
   exception when others then
     if sqlerrm <> 'HOLD_EXPIRED' then raise; end if;
@@ -400,7 +427,7 @@ declare n int;
 begin
   select count(*) into n from public.vehicle_requests;
   if n <> 0 then raise exception 'T10 RLS leak: requests'; end if;
-  select count(*) into n from public.vehicles;
+  select count(*) into n from public.vehicles where user_id <> auth.uid();
   if n <> 0 then raise exception 'T10 RLS leak: vehicles'; end if;
 end $$;
 reset role;

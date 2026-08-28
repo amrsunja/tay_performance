@@ -6,7 +6,7 @@ import SiteFooter from '../../components/layout/SiteFooter'
 import StatusPill from '../../components/ui/StatusPill'
 import { useReveal } from '../../hooks/useReveal'
 import { useAuth } from '../../auth/AuthProvider'
-import { cancelBooking, getMyBookings, photoUrl, signInWithMagicLink } from '../../api/bookings'
+import { cancelBooking, getMyBookings, photoUrl } from '../../api/bookings'
 import { getCatalog } from '../../api/catalog'
 import { errorMessage, supabase } from '../../lib/supabase'
 import type { MyBookingRow } from '../../types/api'
@@ -178,11 +178,9 @@ function BookingCard({
 
 export default function BookingsPage() {
   useReveal()
-  const { session, isAnonymous } = useAuth()
+  const { session } = useAuth()
   const queryClient = useQueryClient()
   const [error, setError] = useState('')
-  const [recoverEmail, setRecoverEmail] = useState('')
-  const [recoverSent, setRecoverSent] = useState(false)
 
   const bookings = useQuery({
     queryKey: ['my-bookings'],
@@ -269,43 +267,17 @@ export default function BookingsPage() {
             <span style={{ color: 'var(--text-soft)', fontSize: 15 }}>
               Aucune réservation sur cet appareil.
             </span>
-            {isAnonymous && (
-              <>
-                <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-                  Vous aviez lié un e-mail ? Recevez un lien magique pour retrouver votre historique.
-                </span>
-                {recoverSent ? (
-                  <span style={{ color: 'var(--status-success)', fontSize: 14 }}>✓ Lien envoyé — vérifiez votre boîte mail.</span>
-                ) : (
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <input
-                      className="field"
-                      type="email"
-                      placeholder="votre@email.fr"
-                      value={recoverEmail}
-                      onChange={(e) => setRecoverEmail(e.target.value)}
-                      style={{ flex: 1, minWidth: 200 }}
-                    />
-                    <button
-                      type="button"
-                      className="ghost"
-                      style={{ fontSize: 13, padding: '11px 18px', borderRadius: 11 }}
-                      disabled={!recoverEmail.includes('@')}
-                      onClick={async () => {
-                        try {
-                          await signInWithMagicLink(recoverEmail)
-                          setRecoverSent(true)
-                        } catch (e) {
-                          setError(errorMessage(e))
-                        }
-                      }}
-                    >
-                      Recevoir le lien
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+            <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+              Vous avez déjà réservé sur un autre appareil ? Connectez-vous avec votre numéro — code par SMS, sans
+              mot de passe.
+            </span>
+            <Link
+              to="/connexion"
+              className="ghost"
+              style={{ fontSize: 13, padding: '11px 18px', borderRadius: 11, justifySelf: 'start' }}
+            >
+              Se connecter par SMS →
+            </Link>
             <Link to="/reserver" className="cta" style={{ fontSize: 14, padding: '12px 20px', borderRadius: 12, justifySelf: 'start' }}>
               Réserver une pose →
             </Link>

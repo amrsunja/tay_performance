@@ -43,12 +43,37 @@ const ERROR_COPY: Record<string, string> = {
 }
 
 export function errorMessage(e: unknown): string {
+  // always keep the raw error inspectable — a mapped French toast must never
+  // hide the real cause from the console
+  console.error('[tay] error:', e)
+
   const raw =
     typeof e === 'object' && e !== null && 'message' in e
       ? String((e as { message: unknown }).message)
       : String(e)
   for (const code of Object.keys(ERROR_COPY)) {
     if (raw.includes(code)) return ERROR_COPY[code]
+  }
+
+  // auth-layer failures (signInAnonymously / OTP) — not part of the RPC vocabulary
+  const lower = raw.toLowerCase()
+  const status = typeof e === 'object' && e !== null && 'status' in e ? Number((e as { status: unknown }).status) : 0
+  if (lower.includes('captcha')) {
+    return 'Vérification anti-robot activée côté serveur — contactez-nous ou réessayez plus tard.'
+  }
+  if (status === 429 || lower.includes('rate limit') || lower.includes('too many')) {
+    return 'Trop de tentatives depuis votre connexion — patientez quelques minutes puis réessayez.'
+  }
+  if (lower.includes('anonymous') && (lower.includes('disabled') || lower.includes('not enabled'))) {
+    // ops misconfiguration, not a user error: the hosted project must enable
+    // Authentication → Sign In/Providers → "Allow anonymous sign-ins"
+    return "Réservation momentanément indisponible (config serveur : sessions anonymes désactivées)."
+  }
+  if (lower.includes('signup') && lower.includes('disabled')) {
+    return 'Création de session désactivée côté serveur — contactez-nous.'
+  }
+  if (status >= 500 || lower.includes('failed to fetch') || lower.includes('network')) {
+    return 'Connexion au serveur impossible — vérifiez votre réseau et réessayez.'
   }
   return 'Une erreur est survenue. Réessayez.'
 }

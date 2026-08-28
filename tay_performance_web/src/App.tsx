@@ -4,6 +4,8 @@ import LandingPage from './features/landing/LandingPage'
 import BookingPage from './features/booking/BookingPage'
 import GaragePage from './features/portal/GaragePage'
 import BookingsPage from './features/portal/BookingsPage'
+import ProfilePage from './features/portal/ProfilePage'
+import SignInPage from './features/auth/SignInPage'
 import AdminLayout from './features/admin/AdminLayout'
 import AdminLoginPage from './features/admin/AdminLoginPage'
 import QueuePage from './features/admin/QueuePage'
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/reserver" element={<BookingPage />} />
         <Route path="/garage" element={<GaragePage />} />
         <Route path="/reservations" element={<BookingsPage />} />
+        <Route path="/profil" element={<ProfilePage />} />
+        <Route path="/connexion" element={<SignInPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
           path="/admin"

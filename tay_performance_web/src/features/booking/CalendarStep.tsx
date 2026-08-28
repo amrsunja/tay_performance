@@ -107,7 +107,12 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
     },
     onSuccess: (result) => {
       setError('')
+      // the booking also auto-saves the vehicle and syncs the profile server-side —
+      // drop every affected cache so /garage, /reservations and /profil are fresh
+      // immediately (fixes "data only appears after switching tabs")
       queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['garage'] })
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
       dispatch({ type: 'setResult', result })
     },
     onError: (e) => {
@@ -149,7 +154,11 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
   }
 
   const heldStart = state.hold?.slotStart ?? null
-  const contactOk = state.contactName.trim().length > 0 && state.contactPhone.trim().length >= 5
+  // name, phone AND email are required (server enforces the same rule)
+  const contactOk =
+    state.contactName.trim().length > 0 &&
+    state.contactPhone.trim().length >= 6 &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(state.contactEmail.trim())
 
   return (
     <section className={styles.step}>
@@ -376,7 +385,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                   </div>
                   <input
                     className="field"
-                    placeholder="E-mail (pour recevoir la confirmation)"
+                    placeholder="E-mail * (confirmation du rendez-vous)"
                     type="email"
                     autoComplete="email"
                     value={state.contactEmail}

@@ -58,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error || !anon.session) {
       throw error ?? new Error('anonymous sign-in failed')
     }
+    // reflect the new session synchronously — don't wait for onAuthStateChange,
+    // pages navigated to right after booking must see session-gated queries enabled
+    setSession(anon.session)
     return anon.session
   }, [])
 

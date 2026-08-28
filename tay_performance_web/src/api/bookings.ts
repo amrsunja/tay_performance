@@ -133,18 +133,3 @@ export async function photoUrl(path: string): Promise<string | null> {
   const { data } = await supabase.storage.from('booking-photos').createSignedUrl(path, 3600)
   return data?.signedUrl ?? null
 }
-
-/** Offer to attach an email to the anonymous account (magic-link confirm). */
-export async function linkEmail(email: string): Promise<void> {
-  const { error } = await supabase.auth.updateUser({ email })
-  if (error) throw error
-}
-
-/** Returning linked user on a new device: magic-link sign-in. */
-export async function signInWithMagicLink(email: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + '/reservations' },
-  })
-  if (error) throw error
-}

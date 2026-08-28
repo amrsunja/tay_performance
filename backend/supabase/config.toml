@@ -27,9 +27,17 @@ enable_anonymous_sign_ins = true
 minimum_password_length = 10
 
 [auth.email]
-enable_signup = false          # no self-serve email signup — admins are dashboard-created,
-enable_confirmations = true    # clients are anonymous (+ optional email linking via OTP)
+enable_signup = false          # no self-serve email signup — admins are dashboard-created
+enable_confirmations = true
 otp_expiry = 3600
+
+[auth.sms]                     # clients sign in / link accounts with PHONE + SMS OTP
+enable_signup = true
+enable_confirmations = true
+
+# local dev: this number always accepts code 123456 — no Twilio needed
+[auth.sms.test_otp]
+33612345678 = "123456"
 
 [auth.rate_limit]
 email_sent = 4                 # OTP / magic-link sends per hour
