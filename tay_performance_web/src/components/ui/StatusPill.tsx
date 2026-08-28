@@ -29,6 +29,13 @@ export function describeTransition(from: BookingStatus | null, to: BookingStatus
   if (price) {
     return `Prix modifié par l'atelier : ${euro.format(price.from)} → ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
   }
+  if (n.startsWith('revenue|')) {
+    const [, kind, ...rest] = n.split('|')
+    const reason = rest.join('|')
+    return kind === 'excluded'
+      ? `Montant retiré du chiffre d'affaires par l'atelier${reason ? ` — ${reason}` : ''}`
+      : "Montant réintégré au chiffre d'affaires"
+  }
   if (from === to) return n || 'Mise à jour'
   if (!from) {
     if (n.includes('création manuelle')) return "Réservation créée par l'atelier" + (n.includes('prix modifié') ? ' (prix modifié)' : '')

@@ -320,6 +320,22 @@ begin
   if st <> 'confirmed' then raise exception 'T6c expected confirmed after rollback, got %', st; end if;
 end $$;
 
+-- T6d — revenue exclusion (0015)
+do $$
+declare bid uuid;
+begin
+  select id into bid from public.bookings where contact_name = 'Walk-in Remise' limit 1;
+  perform public.admin_set_revenue_excluded(bid, true, 'non payé');
+  if not exists (select 1 from public.bookings where id = bid and revenue_excluded and revenue_excluded_reason = 'non payé') then
+    raise exception 'T6d exclusion not applied';
+  end if;
+  if not exists (select 1 from public.booking_status_history where booking_id = bid and note = 'revenue|excluded|non payé') then
+    raise exception 'T6d history missing';
+  end if;
+  perform public.admin_set_revenue_excluded(bid, false, null);
+  if exists (select 1 from public.bookings where id = bid and revenue_excluded) then raise exception 'T6d re-include failed'; end if;
+end $$;
+
 insert into public.booking_admin_notes (booking_id, notes, updated_by)
 values (current_setting('test.booking_a')::uuid, 'note interne — jamais visible client', auth.uid());
 

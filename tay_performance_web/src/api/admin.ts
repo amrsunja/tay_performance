@@ -320,3 +320,74 @@ export function onBookingsChange(handler: () => void): () => void {
     supabase.removeChannel(channel)
   }
 }
+
+/* ---------- finance / transactions ---------- */
+
+export interface FinanceBookingRow {
+  id: string
+  reference: string
+  slotStart: string
+  createdAt: string
+  status: BookingStatus
+  priceTotal: number
+  priceOverridden: boolean
+  revenueExcluded: boolean
+  revenueExcludedReason: string | null
+  contactName: string
+  userId: string | null
+  bodyStyle: string
+  bodyLabel: string
+  vehicleLabel: string
+  zones: TintZoneCode[]
+  createdByAdmin: boolean
+}
+
+/** Every booking of the window (admin RLS) with what the finance page needs. */
+export async function listFinanceBookings(fromISO: string, toISO: string): Promise<FinanceBookingRow[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      `id, reference, slot_start, created_at, status, price_total, price_overridden, revenue_excluded,
+       revenue_excluded_reason, contact_name, user_id, created_by_admin,
+       booking_tint_specs(zone_code),
+       vehicle_variants(body_style_code, body_styles(label_fr), generations(name, models(name, makes(name))))`,
+    )
+    .gte('slot_start', fromISO)
+    .lt('slot_start', toISO)
+    .order('slot_start', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((b) => {
+    const chain = b.vehicle_variants as unknown as {
+      body_style_code: string
+      body_styles: { label_fr: string } | null
+      generations: { name: string; models: { name: string; makes: { name: string } | null } | null } | null
+    } | null
+    return {
+      id: b.id as string,
+      reference: b.reference as string,
+      slotStart: b.slot_start as string,
+      createdAt: b.created_at as string,
+      status: b.status as BookingStatus,
+      priceTotal: Number(b.price_total),
+      priceOverridden: Boolean(b.price_overridden),
+      revenueExcluded: Boolean(b.revenue_excluded),
+      revenueExcludedReason: (b.revenue_excluded_reason as string | null) ?? null,
+      contactName: b.contact_name as string,
+      userId: (b.user_id as string | null) ?? null,
+      bodyStyle: chain?.body_style_code ?? '',
+      bodyLabel: chain?.body_styles?.label_fr ?? '',
+      vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.models?.name ?? ''} ${chain?.generations?.name ?? ''}`.trim(),
+      zones: ((b.booking_tint_specs as { zone_code: string }[] | null) ?? []).map((z) => z.zone_code as TintZoneCode),
+      createdByAdmin: Boolean(b.created_by_admin),
+    }
+  })
+}
+
+export async function setRevenueExcluded(bookingId: string, excluded: boolean, reason?: string | null): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_revenue_excluded', {
+    p_booking_id: bookingId,
+    p_excluded: excluded,
+    p_reason: reason ?? null,
+  })
+  if (error) throw error
+}

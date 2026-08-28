@@ -12,6 +12,7 @@ const NAV = [
   { to: '/admin/agenda', label: 'Agenda', icon: '▦' },
   { to: '/admin/clients', label: 'Clients', icon: '◉' },
   { to: '/admin/vehicules', label: 'Véhicules', icon: '⬡' },
+  { to: '/admin/transactions', label: 'Transactions', icon: '◈' },
   { to: '/admin/tarifs', label: 'Tarifs', icon: '€' },
   { to: '/admin/config', label: 'Config', icon: '⚙' },
 ]

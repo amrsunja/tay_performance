@@ -15,6 +15,7 @@ import ClientsPage from './features/admin/ClientsPage'
 import VehiclesPage from './features/admin/VehiclesPage'
 import PricingPage from './features/admin/PricingPage'
 import ConfigPage from './features/admin/ConfigPage'
+import TransactionsPage from './features/admin/TransactionsPage'
 import RequireAdmin from './auth/RequireAdmin'
 
 /** Reset scroll on navigation (hash links keep native smooth-scroll). */
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="vehicules" element={<VehiclesPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
           <Route path="tarifs" element={<PricingPage />} />
           <Route path="config" element={<ConfigPage />} />
         </Route>
