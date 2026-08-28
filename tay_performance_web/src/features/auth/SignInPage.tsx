@@ -16,6 +16,8 @@ import {
   verifySignInOtp,
 } from '../../api/auth'
 import { errorMessage } from '../../lib/supabase'
+import PhoneInput from '../../components/ui/PhoneInput'
+import { formatPhoneDisplay } from '../../lib/phone'
 import styles from '../portal/portal.module.css'
 
 type Step = 'phone' | 'code'
@@ -126,15 +128,7 @@ export default function SignInPage() {
 
           {step === 'phone' ? (
             <>
-              <input
-                className="field mono"
-                type="tel"
-                autoComplete="tel"
-                placeholder="06 12 34 56 78"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                autoFocus
-              />
+              <PhoneInput value={phoneInput} onChange={setPhoneInput} autoFocus aria-label="Téléphone" />
               {error && (
                 <span style={{ color: 'var(--status-warning)', fontSize: 13 }} role="alert">
                   {error}
@@ -164,7 +158,7 @@ export default function SignInPage() {
                 type="submit"
                 className="cta"
                 style={{ fontSize: 15, padding: 14, borderRadius: 12 }}
-                disabled={pending || phoneInput.trim().length < 6}
+                disabled={pending || !phoneInput}
               >
                 {pending ? 'Envoi…' : 'Recevoir mon code SMS'}
               </button>
@@ -172,7 +166,7 @@ export default function SignInPage() {
           ) : (
             <>
               <span className="mono" style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-                Code envoyé au <span style={{ color: 'var(--text-soft)' }}>{phone}</span>
+                Code envoyé au <span style={{ color: 'var(--text-soft)' }}>{formatPhoneDisplay(phone)}</span>
               </span>
               <input
                 className="field mono"

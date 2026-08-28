@@ -18,6 +18,7 @@ import {
 } from '../../api/admin'
 import { photoUrl } from '../../api/bookings'
 import { errorMessage } from '../../lib/supabase'
+import { formatPhoneDisplay } from '../../lib/phone'
 import type { BookingStatus } from '../../types/domain'
 import { formatDuration, formatEuro } from '../booking/useBookingDraft'
 
@@ -179,15 +180,36 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
 
             {/* contact */}
             <div style={{ padding: 14, borderRadius: 12, background: 'var(--surface-2)', display: 'grid', gap: 4 }}>
+              {b.forOther && (
+                <span className="mono" style={{ fontSize: 11, color: 'var(--octane-300)', letterSpacing: '0.06em' }}>
+                  RDV POUR UNE AUTRE PERSONNE
+                </span>
+              )}
               <span style={{ fontSize: 14, color: 'var(--text)' }}>{b.contactName}</span>
               <a className="mono navlink" href={`tel:${b.contactPhone.replace(/\s/g, '')}`} style={{ fontSize: 13 }}>
-                {b.contactPhone}
+                {formatPhoneDisplay(b.contactPhone) || b.contactPhone}
               </a>
               {b.contactEmail && (
                 <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.contactEmail}</span>
               )}
               {b.clientNotes && (
                 <span style={{ fontSize: 13, color: 'var(--text-soft)', fontStyle: 'italic' }}>« {b.clientNotes} »</span>
+              )}
+              {b.forOther && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle)', display: 'grid', gap: 2 }}>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
+                    RÉSERVÉ PAR (PROFIL)
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--text-soft)' }}>{b.bookerName ?? 'Profil sans nom'}</span>
+                  {b.bookerPhone && (
+                    <a className="mono navlink" href={`tel:${b.bookerPhone}`} style={{ fontSize: 12 }}>
+                      {formatPhoneDisplay(b.bookerPhone)}
+                    </a>
+                  )}
+                  {b.bookerEmail && (
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.bookerEmail}</span>
+                  )}
+                </div>
               )}
             </div>
 

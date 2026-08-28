@@ -147,6 +147,10 @@ function useBookingPageState() {
           const front = booking.specs.find((s) => FRONT_ZONES.includes(s.zone))
           const rear = booking.specs.find((s) => !FRONT_ZONES.includes(s.zone))
           dispatch({ type: 'setReschedule', bookingId: rescheduleId })
+          if (booking.forOther) {
+            dispatch({ type: 'setForOther', value: true })
+            dispatch({ type: 'setContact', field: 'contactName', value: booking.contactName })
+          }
           dispatch({
             type: 'hydrateSpecs',
             selected,

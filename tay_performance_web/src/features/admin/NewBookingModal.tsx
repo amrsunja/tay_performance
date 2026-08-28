@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Modal from '../../components/ui/Modal'
+import PhoneInput from '../../components/ui/PhoneInput'
+import { isValidEmail } from '../../api/auth'
 import VehicleFunnel from '../booking/VehicleStep'
 import { getCatalog } from '../../api/catalog'
 import { getDaySlots } from '../../api/availability'
@@ -58,7 +60,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
         slotStartISO: slotStart,
         contactName,
         contactPhone,
-        contactEmail: contactEmail || null,
+        contactEmail: contactEmail.trim(),
         clientNotes: notes || null,
       }),
     onSuccess: (r) => {
@@ -92,7 +94,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
     <Modal title="Nouvelle réservation (atelier)" wide onClose={onClose}>
       <div style={{ display: 'grid', gap: 18 }}>
         {!vehicle ? (
-          <VehicleFunnel compact onResolved={setVehicle} />
+          <VehicleFunnel compact hideRequest onResolved={setVehicle} />
         ) : (
           <>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -183,8 +185,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
             {/* contact */}
             <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
               <input className="field" placeholder="Nom du client *" value={contactName} onChange={(e) => setContactName(e.target.value)} />
-              <input className="field" placeholder="Téléphone *" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
-              <input className="field" placeholder="E-mail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+              <PhoneInput value={contactPhone} onChange={setContactPhone} aria-label="Téléphone *" />
+              <input className="field" placeholder="E-mail *" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
               <input className="field" placeholder="Note" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
@@ -199,7 +201,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                 !slotStart ||
                 quote.lines.length === 0 ||
                 contactName.trim().length === 0 ||
-                contactPhone.trim().length < 5
+                !contactPhone ||
+                !isValidEmail(contactEmail.trim())
               }
               onClick={() => createMutation.mutate()}
             >

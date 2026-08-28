@@ -64,6 +64,7 @@ export interface MakeRow {
   id: string
   name: string
   slug: string
+  logoUrl: string | null
   isActive: boolean
   modelCount?: number
 }
@@ -78,9 +79,32 @@ export interface GenerationRow {
   id: string
   modelId: string
   name: string
-  yearStart: number
+  yearStart: number | null
   yearEnd: number | null
   isActive: boolean
+}
+export interface BodyStyleRow {
+  code: BodyStyleCode
+  labelFr: string
+  sizeClass: 'S' | 'M' | 'L' | 'XL'
+  displayOrder: number
+  /** admin-editable surcoût applied to every lazily-created variant */
+  defaultLaborMinutes: number
+}
+/** One hit of search_vehicles — a generation with the variants already referenced. */
+export interface VehicleSearchHit {
+  generationId: string
+  makeId: string
+  make: string
+  makeSlug: string
+  logoUrl: string | null
+  modelId: string
+  model: string
+  generation: string
+  yearStart: number | null
+  yearEnd: number | null
+  variants: { id: string; bodyStyle: BodyStyleCode; labelFr: string; baseLaborMinutes: number; notes: string | null }[]
+  score: number
 }
 export interface VariantRow {
   id: string
@@ -183,6 +207,7 @@ export interface CreatedBooking {
   price_breakdown: ServerQuote['breakdown']
   specs: ServerQuoteLine[]
   old_reference?: string
+  for_other?: boolean
 }
 
 export interface MyBookingRow {
@@ -196,6 +221,9 @@ export interface MyBookingRow {
   priceTotal: number
   clientNotes: string | null
   variantId: string
+  contactName: string
+  /** booked by this profile for another person (contactName = that person) */
+  forOther: boolean
   vehicleLabel: string
   bodyLabel: string
   badge: string
@@ -226,6 +254,11 @@ export interface AdminBookingRow {
   contactEmail: string | null
   clientNotes: string | null
   userId: string | null
+  /** true when the profile booked for someone else — contact* = that person, booker* = the profile */
+  forOther: boolean
+  bookerName: string | null
+  bookerPhone: string | null
+  bookerEmail: string | null
   vehicleLabel: string
   bodyLabel: string
   badge: string
@@ -255,7 +288,10 @@ export interface StatusHistoryRow {
 export interface VehicleRequestRow {
   id: string
   rawText: string
+  contactName: string | null
   contactEmail: string | null
+  contactPhone: string | null
+  userId: string | null
   status: 'new' | 'resolved' | 'rejected'
   createdAt: string
 }

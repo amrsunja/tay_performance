@@ -445,4 +445,70 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T11 — booking FOR ANOTHER PERSON (0012): attached to the booker, contact = other
+--        person, no garage attach, profile untouched; booker contact required
+-- ---------------------------------------------------------------
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+set role authenticated;
+do $$
+declare h jsonb; s timestamptz; b jsonb; n_before int; n_after int; p record;
+begin
+  delete from public.booking_holds where user_id = auth.uid();
+  select slot_start into s from public.get_available_slots(current_setting('test.day')::date + 1, 90)
+    where state = 'available' order by slot_start offset 1 limit 1;
+  h := public.hold_slot(s, 90, 1);
+
+  -- fresh profile (no contact yet) → booking for someone else must be refused
+  update public.profiles set full_name = null, phone = null, email = null where id = auth.uid();
+  begin
+    perform public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      'Autre Personne', '+33698765432', 'autre@test.local', null, false, null,
+      true, null, null, null);
+    raise exception 'T11 for_other accepted without booker contact';
+  exception when others then
+    if sqlerrm <> 'BOOKER_CONTACT_REQUIRED' then raise; end if;
+  end;
+
+  -- with the booker's own contact passed inline → OK
+  select count(*) into n_before from public.vehicles where user_id = auth.uid();
+  b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      'Autre Personne', '+33698765432', 'autre@test.local', null, false, null,
+      true, 'Booker B', '+33611111111', 'booker@test.local');
+  if not (b->>'for_other')::boolean then raise exception 'T11 for_other flag missing'; end if;
+  if (b->>'vehicle_id') is not null then raise exception 'T11 vehicle attached to booker garage'; end if;
+  select count(*) into n_after from public.vehicles where user_id = auth.uid();
+  if n_after <> n_before then raise exception 'T11 garage changed'; end if;
+
+  -- booking row: attached to booker, contact = other person
+  if not exists (select 1 from public.bookings where id = (b->>'id')::uuid
+                   and user_id = auth.uid() and for_other and contact_name = 'Autre Personne'
+                   and contact_email = 'autre@test.local') then
+    raise exception 'T11 booking row mismatch';
+  end if;
+  -- profile = booker's own contact, NOT the other person's
+  select full_name, phone, email into p from public.profiles where id = auth.uid();
+  if p.full_name <> 'Booker B' or p.email <> 'booker@test.local' then
+    raise exception 'T11 profile overwritten with other person: % %', p.full_name, p.email;
+  end if;
+end $$;
+reset role;
+
+-- admin sees who booked for whom
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare r record;
+begin
+  select b.contact_name, b.for_other, p.full_name as booker into r
+    from public.bookings b join public.profiles p on p.id = b.user_id
+   where b.for_other limit 1;
+  if r.booker <> 'Booker B' or r.contact_name <> 'Autre Personne' then
+    raise exception 'T11 admin view mismatch';
+  end if;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

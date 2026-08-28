@@ -37,7 +37,11 @@ const ERROR_COPY: Record<string, string> = {
   NO_PUBLISHED_PRICING: 'Aucune grille tarifaire publiée.',
   PRICING_INCOMPLETE: 'Grille tarifaire incomplète.',
   INVALID_SPECS: 'Configuration invalide.',
-  INVALID_CONTACT: 'Renseignez au minimum votre nom et votre téléphone.',
+  INVALID_CONTACT: 'Renseignez votre nom, votre téléphone et votre e-mail.',
+  BOOKER_CONTACT_REQUIRED: 'Renseignez aussi vos propres coordonnées (nom, téléphone, e-mail).',
+  EMAIL_REQUIRED: 'Une adresse e-mail valide est requise.',
+  PHONE_REQUIRED: 'Un numéro de téléphone valide est requis.',
+  INVALID_INPUT: 'Décrivez votre véhicule (3 caractères minimum).',
   NOT_FOUND: 'Introuvable.',
   FORBIDDEN: 'Accès refusé.',
 }

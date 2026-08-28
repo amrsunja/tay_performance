@@ -36,7 +36,7 @@ function mapVehicle(v: VehicleSelectRow): GarageVehicle {
     bodyStyle: (chain?.body_style_code ?? 'berline_4p') as BodyStyleCode,
     bodyLabel: chain?.body_styles?.label_fr ?? '',
     years: chain?.generations
-      ? generationYears({ yearStart: Number(chain.generations.year_start), yearEnd: chain.generations.year_end == null ? null : Number(chain.generations.year_end) })
+      ? generationYears({ yearStart: chain.generations.year_start == null ? null : Number(chain.generations.year_start), yearEnd: chain.generations.year_end == null ? null : Number(chain.generations.year_end) })
       : '',
     badge: badgeFor(model),
     year: v.year ?? undefined,

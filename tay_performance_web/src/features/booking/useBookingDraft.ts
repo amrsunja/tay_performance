@@ -21,6 +21,11 @@ export interface DraftState {
   contactPhone: string
   contactEmail: string
   clientNotes: string
+  /** the RDV is for someone else: contact_* = that person, booker_* = the profile's own contact */
+  forOther: boolean
+  bookerName: string
+  bookerPhone: string
+  bookerEmail: string
   rescheduleOf: string | null
   result: CreatedBooking | null
 }
@@ -38,7 +43,12 @@ export type DraftAction =
   | { type: 'selectDate'; date: { year: number; month: number; day: number } }
   | { type: 'setHold'; hold: SlotHold }
   | { type: 'clearHold' }
-  | { type: 'setContact'; field: 'contactName' | 'contactPhone' | 'contactEmail' | 'clientNotes'; value: string }
+  | {
+      type: 'setContact'
+      field: 'contactName' | 'contactPhone' | 'contactEmail' | 'clientNotes' | 'bookerName' | 'bookerPhone' | 'bookerEmail'
+      value: string
+    }
+  | { type: 'setForOther'; value: boolean }
   | { type: 'setReschedule'; bookingId: string }
   | { type: 'hydrateSpecs'; selected: TintZoneCode[]; frontVlt: number; rearVlt: number }
   | { type: 'setResult'; result: CreatedBooking }
@@ -58,6 +68,10 @@ export const INITIAL_DRAFT: DraftState = {
   contactPhone: '',
   contactEmail: '',
   clientNotes: '',
+  forOther: false,
+  bookerName: '',
+  bookerPhone: '',
+  bookerEmail: '',
   rescheduleOf: null,
   result: null,
 }
@@ -94,6 +108,8 @@ function reducer(state: DraftState, action: DraftAction): DraftState {
       return { ...state, hold: null }
     case 'setContact':
       return { ...state, [action.field]: action.value }
+    case 'setForOther':
+      return { ...state, forOther: action.value }
     case 'setReschedule':
       return { ...state, rescheduleOf: action.bookingId }
     case 'hydrateSpecs':

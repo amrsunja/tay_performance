@@ -7,14 +7,7 @@
                verifyOtp type 'sms'. Creates the account on first use. */
 import { supabase } from '../lib/supabase'
 
-/** Normalize a user-typed phone to E.164; French mobiles get +33. Returns null if invalid. */
-export function normalizePhone(input: string): string | null {
-  const raw = input.replace(/[\s.\-()]/g, '')
-  if (/^\+\d{8,15}$/.test(raw)) return raw
-  if (/^00\d{8,15}$/.test(raw)) return '+' + raw.slice(2)
-  if (/^0\d{9}$/.test(raw)) return '+33' + raw.slice(1)
-  return null
-}
+export { normalizePhone } from '../lib/phone'
 
 export function isValidEmail(v: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)

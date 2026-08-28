@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthProvider'
 import { getDaySlots, getMonthAvailability, holdSlot, releaseHold } from '../../api/availability'
 import { createBooking } from '../../api/bookings'
+import { getMyProfile } from '../../api/profile'
+import { isValidEmail } from '../../api/auth'
+import { normalizePhone } from '../../lib/phone'
 import { errorMessage } from '../../lib/supabase'
+import PhoneInput from '../../components/ui/PhoneInput'
 import type { ResolvedVehicle, SlotInfo } from '../../types/api'
 import { dayLabel, getMonth } from './calendar'
 import { formatDuration, formatEuro, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
@@ -31,8 +35,45 @@ function pad(n: number): string {
 }
 
 export default function CalendarStep({ state, dispatch, quote, vehicle }: StepProps) {
-  const { ensureSession } = useAuth()
+  const { ensureSession, session } = useAuth()
   const queryClient = useQueryClient()
+  const userId = session?.user.id
+  const profile = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: () => getMyProfile(userId!),
+    enabled: Boolean(userId),
+  })
+  const profileName = profile.data?.fullName ?? ''
+  const profilePhone = normalizePhone(profile.data?.phone ?? '') ?? ''
+  const profileEmail = profile.data?.email ?? ''
+  const profileComplete = profileName.length > 0 && profilePhone.length > 0 && isValidEmail(profileEmail)
+
+  // "pour moi" → prefill the contact from the profile once (fields stay editable)
+  const [prefilled, setPrefilled] = useState(false)
+  useEffect(() => {
+    if (prefilled || !profile.data || state.forOther) return
+    if (!state.contactName && profileName) dispatch({ type: 'setContact', field: 'contactName', value: profileName })
+    if (!state.contactPhone && profilePhone) dispatch({ type: 'setContact', field: 'contactPhone', value: profilePhone })
+    if (!state.contactEmail && profileEmail) dispatch({ type: 'setContact', field: 'contactEmail', value: profileEmail })
+    setPrefilled(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.data])
+
+  const setForOther = (value: boolean) => {
+    if (value === state.forOther) return
+    dispatch({ type: 'setForOther', value })
+    if (value) {
+      // the contact block now describes the OTHER person: clear the profile's values
+      for (const f of ['contactName', 'contactPhone', 'contactEmail'] as const) dispatch({ type: 'setContact', field: f, value: '' })
+      dispatch({ type: 'setContact', field: 'bookerName', value: profileName })
+      dispatch({ type: 'setContact', field: 'bookerPhone', value: profilePhone })
+      dispatch({ type: 'setContact', field: 'bookerEmail', value: profileEmail })
+    } else {
+      dispatch({ type: 'setContact', field: 'contactName', value: profileName })
+      dispatch({ type: 'setContact', field: 'contactPhone', value: profilePhone })
+      dispatch({ type: 'setContact', field: 'contactEmail', value: profileEmail })
+    }
+  }
   const month = getMonth(state.monthOffset)
   const today = new Date()
   const [error, setError] = useState('')
@@ -103,6 +144,10 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
         clientNotes: state.clientNotes || null,
         ack: state.ack,
         rescheduleOf: state.rescheduleOf,
+        forOther: state.forOther,
+        bookerName: state.forOther ? state.bookerName || null : null,
+        bookerPhone: state.forOther ? state.bookerPhone || null : null,
+        bookerEmail: state.forOther ? state.bookerEmail || null : null,
       })
     },
     onSuccess: (result) => {
@@ -157,8 +202,13 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
   // name, phone AND email are required (server enforces the same rule)
   const contactOk =
     state.contactName.trim().length > 0 &&
-    state.contactPhone.trim().length >= 6 &&
+    /^\+\d{8,15}$/.test(state.contactPhone) &&
     /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(state.contactEmail.trim())
+  // booking for someone else → the booker's own contact must be complete too
+  const bookerOk =
+    !state.forOther ||
+    (state.bookerName.trim().length > 0 && /^\+\d{8,15}$/.test(state.bookerPhone) && isValidEmail(state.bookerEmail.trim()))
+  const showBookerFields = state.forOther && !profileComplete
 
   return (
     <section className={styles.step}>
@@ -364,8 +414,36 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                   </div>
                 )}
 
+                {/* ---------- who is the RDV for ---------- */}
+                <div className={styles.forWho} role="radiogroup" aria-label="Ce rendez-vous est pour">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!state.forOther}
+                    className={`${styles.forWhoBtn} ${!state.forOther ? styles.forWhoActive : ''}`}
+                    onClick={() => setForOther(false)}
+                  >
+                    Pour moi{profileName ? ` · ${profileName.split(' ')[0]}` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={state.forOther}
+                    className={`${styles.forWhoBtn} ${state.forOther ? styles.forWhoActive : ''}`}
+                    onClick={() => setForOther(true)}
+                  >
+                    Pour une autre personne
+                  </button>
+                </div>
+
                 {/* ---------- contact (required to confirm — docs/06 §1.4) ---------- */}
-                <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+                <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                  {state.forOther && (
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                      Coordonnées de la personne qui viendra à l'atelier — la réservation reste rattachée à votre
+                      compte.
+                    </span>
+                  )}
                   <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
                     <input
                       className="field"
@@ -374,13 +452,10 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                       value={state.contactName}
                       onChange={(e) => dispatch({ type: 'setContact', field: 'contactName', value: e.target.value })}
                     />
-                    <input
-                      className="field"
-                      placeholder="Téléphone *"
-                      type="tel"
-                      autoComplete="tel"
+                    <PhoneInput
                       value={state.contactPhone}
-                      onChange={(e) => dispatch({ type: 'setContact', field: 'contactPhone', value: e.target.value })}
+                      onChange={(v) => dispatch({ type: 'setContact', field: 'contactPhone', value: v })}
+                      aria-label="Téléphone *"
                     />
                   </div>
                   <input
@@ -397,6 +472,41 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                     value={state.clientNotes}
                     onChange={(e) => dispatch({ type: 'setContact', field: 'clientNotes', value: e.target.value })}
                   />
+
+                  {showBookerFields && (
+                    <div style={{ display: 'grid', gap: 10, marginTop: 6 }}>
+                      <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+                        Vos coordonnées (personne qui réserve) *
+                      </span>
+                      <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
+                        <input
+                          className="field"
+                          placeholder="Votre nom complet *"
+                          autoComplete="name"
+                          value={state.bookerName}
+                          onChange={(e) => dispatch({ type: 'setContact', field: 'bookerName', value: e.target.value })}
+                        />
+                        <PhoneInput
+                          value={state.bookerPhone}
+                          onChange={(v) => dispatch({ type: 'setContact', field: 'bookerPhone', value: v })}
+                          aria-label="Votre téléphone *"
+                        />
+                      </div>
+                      <input
+                        className="field"
+                        placeholder="Votre e-mail * (copie de la confirmation)"
+                        type="email"
+                        autoComplete="email"
+                        value={state.bookerEmail}
+                        onChange={(e) => dispatch({ type: 'setContact', field: 'bookerEmail', value: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  {state.forOther && profileComplete && (
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                      Réservé par {profileName} · {profileEmail} — vous recevrez une copie de la confirmation.
+                    </span>
+                  )}
                 </div>
 
                 {error && (
@@ -409,7 +519,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                   type="button"
                   className="cta"
                   style={{ width: '100%', marginTop: 18, fontSize: 16, padding: 16, borderRadius: 13 }}
-                  disabled={!state.hold || !contactOk || confirmMutation.isPending}
+                  disabled={!state.hold || !contactOk || !bookerOk || confirmMutation.isPending}
                   onClick={() => confirmMutation.mutate()}
                 >
                   {confirmMutation.isPending ? 'Confirmation…' : 'Confirmer le rendez-vous'}{' '}

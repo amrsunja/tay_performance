@@ -153,6 +153,11 @@ export default function QueuePage() {
                     <span className={`sat ${styles.queueVehicleName}`}>{entry.vehicleLabel}</span>
                     <span className={styles.queueOwner}>
                       {entry.contactName} · <span className="mono">{entry.contactPhone}</span>
+                      {entry.forOther && (
+                        <span className="chip" style={{ marginLeft: 8, fontSize: 11 }} title={`Réservé par ${entry.bookerName ?? 'profil'}`}>
+                          pour un tiers · par {entry.bookerName?.split(' ')[0] ?? 'profil'}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </div>

@@ -25,6 +25,12 @@ export interface CreateBookingInput {
   ack: boolean
   /** when set, atomically cancels this old booking (reschedule flow) */
   rescheduleOf?: string | null
+  /** RDV for someone else — contact_* is that person; the booker's own contact (optional
+      when the profile already has it) is passed as booker* */
+  forOther?: boolean
+  bookerName?: string | null
+  bookerPhone?: string | null
+  bookerEmail?: string | null
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<CreatedBooking> {
@@ -38,6 +44,10 @@ export async function createBooking(input: CreateBookingInput): Promise<CreatedB
     p_client_notes: input.clientNotes ?? null,
     p_ack: input.ack,
     p_vehicle_id: input.vehicleId ?? null,
+    p_for_other: input.forOther ?? false,
+    p_booker_name: input.bookerName ?? null,
+    p_booker_phone: input.bookerPhone ?? null,
+    p_booker_email: input.bookerEmail ?? null,
   }
   const { data, error } = input.rescheduleOf
     ? await supabase.rpc('reschedule_booking', { p_old_booking_id: input.rescheduleOf, ...args })
@@ -65,6 +75,8 @@ interface BookingSelectRow {
   price_total: number
   client_notes: string | null
   variant_id: string
+  contact_name: string
+  for_other: boolean
   booking_tint_specs: { zone_code: string; vlt_percent: number; price_delta: number; is_legal: boolean }[]
   bookings_warranty: { warranty_years: number } | null
   booking_photos: { kind: string; storage_path: string }[]
@@ -76,7 +88,7 @@ interface BookingSelectRow {
 }
 
 const BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
-  price_total, client_notes, variant_id,
+  price_total, client_notes, variant_id, contact_name, for_other,
   booking_tint_specs(zone_code, vlt_percent, price_delta, is_legal),
   bookings_warranty(warranty_years),
   booking_photos(kind, storage_path),
@@ -98,6 +110,8 @@ function mapBookingRow(b: BookingSelectRow): MyBookingRow {
     priceTotal: Number(b.price_total),
     clientNotes: b.client_notes,
     variantId: b.variant_id,
+    contactName: b.contact_name,
+    forOther: Boolean(b.for_other),
     vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
     bodyLabel: chain?.body_styles?.label_fr ?? '',
     badge: (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',

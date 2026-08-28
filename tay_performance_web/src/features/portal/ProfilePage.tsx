@@ -11,6 +11,8 @@ import { getMyProfile, updateMyProfile } from '../../api/profile'
 import { getMyVehicles } from '../../api/garage'
 import { getMyBookings } from '../../api/bookings'
 import { isValidEmail } from '../../api/auth'
+import PhoneInput from '../../components/ui/PhoneInput'
+import { formatPhoneDisplay, normalizePhone } from '../../lib/phone'
 import { errorMessage } from '../../lib/supabase'
 import { formatEuro } from '../booking/useBookingDraft'
 import styles from './portal.module.css'
@@ -53,7 +55,7 @@ export default function ProfilePage() {
     if (profile.data && !hydrated) {
       setFullName(profile.data.fullName)
       setEmail(profile.data.email)
-      setPhone(profile.data.phone)
+      setPhone(normalizePhone(profile.data.phone) ?? profile.data.phone)
       setHydrated(true)
     }
   }, [profile.data, hydrated])
@@ -61,7 +63,9 @@ export default function ProfilePage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error('FORBIDDEN')
-      if (email && !isValidEmail(email)) throw new Error('INVALID_CONTACT')
+      // name, e-mail and phone are required everywhere
+      if (fullName.trim().length === 0 || !isValidEmail(email.trim())) throw new Error('INVALID_CONTACT')
+      if (isAnonymous && !normalizePhone(phone)) throw new Error('PHONE_REQUIRED')
       await updateMyProfile(userId, {
         fullName,
         email,
@@ -114,7 +118,7 @@ export default function ProfilePage() {
             </h2>
             <input
               className="field"
-              placeholder="Nom complet"
+              placeholder="Nom complet *"
               autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -122,24 +126,18 @@ export default function ProfilePage() {
             <input
               className="field"
               type="email"
-              placeholder="E-mail"
+              placeholder="E-mail *"
               autoComplete="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             {isAnonymous ? (
-              <input
-                className="field mono"
-                type="tel"
-                placeholder="Téléphone"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+              <PhoneInput value={phone} onChange={setPhone} aria-label="Téléphone *" />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span className="field mono" style={{ flex: 1, opacity: 0.75 }}>
-                  {profile.data?.phone || '—'}
+                  {formatPhoneDisplay(profile.data?.phone) || '—'}
                 </span>
                 <span className="pill pill--success">
                   <span aria-hidden>✓</span> Vérifié

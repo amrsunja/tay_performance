@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Modal from '../../components/ui/Modal'
+import PhoneInput from '../../components/ui/PhoneInput'
+import { formatPhoneDisplay, normalizePhone } from '../../lib/phone'
+import { isValidEmail } from '../../api/auth'
 import StatusPill from '../../components/ui/StatusPill'
 import { getClientBookings, listClients, updateClientProfile } from '../../api/admin'
 import { errorMessage } from '../../lib/supabase'
@@ -81,7 +84,7 @@ export default function ClientsPage() {
                   <span className={styles.cellStack}>
                     <span>{client.email ?? '—'}</span>
                     <span className="mono" style={{ color: 'var(--text-dim)', fontSize: 12 }}>
-                      {client.phone ?? '—'}
+                      {formatPhoneDisplay(client.phone) || '—'}
                     </span>
                   </span>
                 </td>
@@ -117,7 +120,7 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
   const queryClient = useQueryClient()
   const [fullName, setFullName] = useState(client.fullName ?? '')
   const [email, setEmail] = useState(client.email ?? '')
-  const [phone, setPhone] = useState(client.phone ?? '')
+  const [phone, setPhone] = useState(normalizePhone(client.phone ?? '') ?? '')
   const [error, setError] = useState('')
 
   const bookings = useQuery({
@@ -126,7 +129,10 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
   })
 
   const saveMutation = useMutation({
-    mutationFn: () => updateClientProfile(client.id, { fullName, email, phone }),
+    mutationFn: async () => {
+      if (!isValidEmail(email.trim()) || !phone) throw new Error('INVALID_CONTACT')
+      await updateClientProfile(client.id, { fullName, email: email.trim(), phone })
+    },
     onSuccess: () => {
       setError('')
       queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
@@ -139,8 +145,8 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
       <div style={{ display: 'grid', gap: 12 }}>
         <input className="field" placeholder="Nom" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
-          <input className="field" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="field" placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input className="field" placeholder="E-mail *" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <PhoneInput value={phone} onChange={setPhone} aria-label="Téléphone *" />
         </div>
         {error && <span style={{ color: 'var(--status-warning)', fontSize: 13 }}>{error}</span>}
         <button

@@ -25,6 +25,8 @@ interface AdminBookingSelectRow {
   client_notes: string | null
   user_id: string | null
   created_by_admin: boolean
+  for_other: boolean
+  profiles: { full_name: string | null; phone: string | null; email: string | null } | null
   booking_tint_specs: { zone_code: string; vlt_percent: number; is_legal: boolean }[]
   vehicle_variants: {
     body_style_code: string
@@ -34,7 +36,8 @@ interface AdminBookingSelectRow {
 }
 
 const ADMIN_BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
-  price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin,
+  price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin, for_other,
+  profiles(full_name, phone, email),
   booking_tint_specs(zone_code, vlt_percent, is_legal),
   vehicle_variants(body_style_code, body_styles(label_fr),
     generations(name, models(name, makes(name))))`
@@ -57,6 +60,10 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     contactEmail: b.contact_email,
     clientNotes: b.client_notes,
     userId: b.user_id,
+    forOther: Boolean(b.for_other),
+    bookerName: b.profiles?.full_name ?? null,
+    bookerPhone: b.profiles?.phone ?? null,
+    bookerEmail: b.profiles?.email ?? null,
     vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
     bodyLabel: chain?.body_styles?.label_fr ?? '',
     badge: (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
@@ -228,14 +235,17 @@ export async function getClientBookings(userId: string): Promise<AdminBookingRow
 export async function listVehicleRequests(): Promise<VehicleRequestRow[]> {
   const { data, error } = await supabase
     .from('vehicle_requests')
-    .select('id, raw_text, contact_email, status, created_at')
+    .select('id, raw_text, contact_name, contact_email, contact_phone, user_id, status, created_at')
     .order('created_at', { ascending: false })
     .limit(50)
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id as string,
     rawText: r.raw_text as string,
+    contactName: (r.contact_name as string | null) ?? null,
     contactEmail: (r.contact_email as string | null) ?? null,
+    contactPhone: (r.contact_phone as string | null) ?? null,
+    userId: (r.user_id as string | null) ?? null,
     status: r.status as VehicleRequestRow['status'],
     createdAt: r.created_at as string,
   }))

@@ -46,8 +46,10 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
         </div>
         <h1 className={`clash ${styles.h1}`}>Votre créneau est réservé.</h1>
         <p className={styles.confirmLede}>
-          L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation. Votre véhicule a
-          été ajouté à votre garage.
+          L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation.
+          {booking.for_other
+            ? ' La personne concernée reçoit la confirmation ; vous en recevez une copie.'
+            : ' Votre véhicule a été ajouté à votre garage.'}
           {booking.old_reference ? ` Votre ancienne réservation ${booking.old_reference} est annulée.` : ''}
         </p>
 

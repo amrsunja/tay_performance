@@ -102,6 +102,11 @@ function BookingCard({
         <div>
           <span className={`mono ${styles.bookingRef}`}>{booking.reference}</span>
           <h2 className={`sat ${styles.bookingTitle}`}>{booking.vehicleLabel}</h2>
+          {booking.forOther && (
+            <span className="chip" style={{ fontSize: 11, marginBottom: 6, display: 'inline-block' }}>
+              Pour {booking.contactName}
+            </span>
+          )}
           <div className={`mono ${styles.bookingWhen}`}>
             {dateFmt.format(start)} · {timeFmt.format(start)} · {formatDuration(booking.durationMin)}
           </div>

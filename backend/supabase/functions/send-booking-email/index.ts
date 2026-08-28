@@ -33,6 +33,10 @@ type BookingRow = {
   contact_name: string;
   contact_email: string | null;
   legal_flag: string;
+  for_other: boolean;
+  user_id: string | null;
+  /** booker profile (only relevant when for_other) */
+  profiles: { full_name: string | null; email: string | null } | null;
 };
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", {
@@ -56,7 +60,7 @@ async function sendEmail(to: string, subject: string, html: string) {
 async function getBooking(id: string): Promise<BookingRow | null> {
   const { data } = await supabase
     .from("bookings")
-    .select("id, reference, slot_start, slot_end, duration_min, status, price_total, contact_name, contact_email, legal_flag")
+    .select("id, reference, slot_start, slot_end, duration_min, status, price_total, contact_name, contact_email, legal_flag, for_other, user_id, profiles(full_name, email)")
     .eq("id", id)
     .single();
   return data as BookingRow | null;
@@ -72,6 +76,7 @@ function recapHtml(b: BookingRow, address: string): string {
   return `
   <table style="font-family:Arial,sans-serif;font-size:14px;color:#111;border-collapse:collapse">
     <tr><td style="padding:4px 12px 4px 0;color:#666">Référence</td><td><b>${b.reference}</b></td></tr>
+    ${b.for_other ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Rendez-vous pour</td><td>${b.contact_name}</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#666">Date</td><td>${dateFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Heure</td><td>${timeFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Durée estimée</td><td>~${b.duration_min} min</td></tr>
@@ -87,6 +92,18 @@ function wrap(title: string, body: string): string {
   </div>`;
 }
 
+/** When a profile books for someone else, the booker gets a copy of every notification. */
+async function sendBookerCopy(b: BookingRow, subject: string, intro: string, recap: string) {
+  const bookerEmail = b.for_other ? b.profiles?.email : null;
+  if (!bookerEmail || bookerEmail === b.contact_email) return;
+  await sendEmail(
+    bookerEmail,
+    `${subject} (réservé pour ${b.contact_name})`,
+    wrap(`Bonjour ${b.profiles?.full_name ?? ""},`.replace(" ,", ","),
+      `<p>${intro}</p>${recap}`),
+  );
+}
+
 async function handleBookingCreated(bookingId: string) {
   const b = await getBooking(bookingId);
   if (!b) return;
@@ -100,9 +117,12 @@ async function handleBookingCreated(bookingId: string) {
         `<p>Votre créneau est réservé. L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation.</p>${recap}`),
     );
   }
+  await sendBookerCopy(b, `Demande reçue — ${b.reference}`,
+    `Vous avez réservé un créneau pour <b>${b.contact_name}</b>. L'atelier confirme rapidement.`, recap);
   if (WORKSHOP_NOTIFY_EMAIL) {
     await sendEmail(WORKSHOP_NOTIFY_EMAIL, `Nouvelle demande — ${b.reference}`,
-      wrap("Nouvelle demande de réservation", recap));
+      wrap("Nouvelle demande de réservation",
+        (b.for_other ? `<p>Réservé par <b>${b.profiles?.full_name ?? "profil"}</b> (${b.profiles?.email ?? "—"}) pour <b>${b.contact_name}</b>.</p>` : "") + recap));
   }
 }
 
@@ -116,11 +136,15 @@ async function handleStatusChange(bookingId: string, toStatus: string) {
       await sendEmail(b.contact_email, `Rendez-vous confirmé — ${b.reference}`,
         wrap(`C'est confirmé, ${b.contact_name} !`,
           `<p>On vous attend à l'atelier. Présentez-vous 5 min avant — un café vous attend.</p>${recap}`));
+      await sendBookerCopy(b, `Rendez-vous confirmé — ${b.reference}`,
+        `Le rendez-vous que vous avez réservé pour <b>${b.contact_name}</b> est confirmé.`, recap);
       break;
     case "cancelled":
       await sendEmail(b.contact_email, `Rendez-vous annulé — ${b.reference}`,
         wrap("Rendez-vous annulé",
           `<p>Votre rendez-vous a été annulé. Besoin d'un nouveau créneau ? Réservez en ligne quand vous voulez.</p>${recap}`));
+      await sendBookerCopy(b, `Rendez-vous annulé — ${b.reference}`,
+        `Le rendez-vous que vous avez réservé pour <b>${b.contact_name}</b> a été annulé.`, recap);
       break;
     case "completed":
       await sendEmail(b.contact_email, `Pose terminée — ${b.reference}`,
@@ -138,7 +162,7 @@ async function handleReminders() {
   const end = new Date(start); end.setDate(end.getDate() + 1);
   const { data } = await supabase
     .from("bookings")
-    .select("id, reference, slot_start, slot_end, duration_min, status, price_total, contact_name, contact_email, legal_flag")
+    .select("id, reference, slot_start, slot_end, duration_min, status, price_total, contact_name, contact_email, legal_flag, for_other, user_id, profiles(full_name, email)")
     .eq("status", "confirmed")
     .gte("slot_start", start.toISOString())
     .lt("slot_start", end.toISOString());

@@ -1149,3 +1149,32 @@
     padding: 28px 16px;
   }
 }
+
+/* ---------- "pour moi / pour une autre personne" ---------- */
+.forWho {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+}
+.forWhoBtn {
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.forWhoBtn:hover { color: var(--text); }
+.forWhoActive {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
