@@ -28,6 +28,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [notes, setNotes] = useState('')
+  // price: '' = auto (quote), otherwise the admin's own total
+  const [priceInput, setPriceInput] = useState('')
   const [error, setError] = useState('')
   const [reference, setReference] = useState('')
 
@@ -62,6 +64,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
         contactPhone,
         contactEmail: contactEmail.trim(),
         clientNotes: notes || null,
+        priceOverride: priceOverride,
       }),
     onSuccess: (r) => {
       setReference(r.reference)
@@ -72,6 +75,10 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
     onError: (e) => setError(errorMessage(e)),
   })
 
+  const parsedPrice = priceInput.trim() === '' ? null : Number(priceInput.replace(',', '.'))
+  const priceValid = parsedPrice === null || (Number.isFinite(parsedPrice) && parsedPrice >= 0)
+  const priceOverride = parsedPrice !== null && priceValid && parsedPrice !== quote.total ? parsedPrice : null
+
   const toggleZone = (zone: TintZoneCode) =>
     setSelected((s) => (s.includes(zone) ? s.filter((z) => z !== zone) : [...s, zone]))
 
@@ -80,7 +87,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
       <Modal title="Réservation créée" onClose={onClose}>
         <div style={{ display: 'grid', gap: 12 }}>
           <span style={{ color: 'var(--status-success)', fontSize: 15 }}>
-            ✓ <span className="mono">{reference}</span> — confirmée pour {contactName}.
+            ✓ <span className="mono">{reference}</span> — confirmée pour {contactName}
+            {priceOverride !== null ? ` · ${formatEuro(priceOverride)} (prix modifié)` : ''}.
           </span>
           <button type="button" className="cta" style={{ fontSize: 14, padding: '12px 22px', borderRadius: 12, justifySelf: 'start' }} onClick={onClose}>
             Fermer
@@ -114,7 +122,6 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                     type="button"
                     className="chip"
                     aria-pressed={selected.includes(z.code)}
-                    style={selected.includes(z.code) ? { borderColor: 'var(--octane-500)', color: 'var(--octane-300)' } : undefined}
                     onClick={() => toggleZone(z.code)}
                   >
                     {z.labelFr}
@@ -145,6 +152,40 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            {/* price — auto by default, editable */}
+            <div style={{ display: 'grid', gap: 8 }}>
+              <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>Prix</span>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="field mono"
+                    inputMode="decimal"
+                    placeholder={quote.total.toFixed(2)}
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value.replace(/[^\d.,]/g, ''))}
+                    aria-label="Prix total (€)"
+                    aria-invalid={!priceValid || undefined}
+                    style={{ width: 150, paddingRight: 30, borderColor: !priceValid ? 'var(--status-warning)' : priceOverride !== null ? 'var(--octane-500)' : undefined }}
+                  />
+                  <span className="mono" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-dim)' }}>€</span>
+                </div>
+                {priceOverride !== null ? (
+                  <>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>
+                      prix modifié · calculé {formatEuro(quote.total)}
+                    </span>
+                    <button type="button" className="navlink mono" style={{ fontSize: 12 }} onClick={() => setPriceInput('')}>
+                      remettre le prix auto
+                    </button>
+                  </>
+                ) : (
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                    calculé automatiquement — modifiez pour appliquer une remise / majoration
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* slot */}
             <div style={{ display: 'grid', gap: 8 }}>
               <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>Créneau</span>
@@ -169,7 +210,6 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                         type="button"
                         className="chip mono"
                         aria-pressed={slotStart === s.slotStart}
-                        style={slotStart === s.slotStart ? { borderColor: 'var(--octane-500)', color: 'var(--octane-300)' } : undefined}
                         onClick={() => setSlotStart(s.slotStart)}
                       >
                         {slotTimeFmt.format(new Date(s.slotStart))}
@@ -202,7 +242,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                 quote.lines.length === 0 ||
                 contactName.trim().length === 0 ||
                 !contactPhone ||
-                !isValidEmail(contactEmail.trim())
+                !isValidEmail(contactEmail.trim()) ||
+                !priceValid
               }
               onClick={() => createMutation.mutate()}
             >

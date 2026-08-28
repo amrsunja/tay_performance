@@ -78,6 +78,9 @@ export default function SiteHeader() {
           {item.label}
         </a>
       ))}
+      <NavLink to="/adresse" className="navlink" style={{ fontSize: 14 }}>
+        Adresse
+      </NavLink>
       <NavLink to="/garage" className="navlink" style={{ fontSize: 14 }}>
         Mon Garage
       </NavLink>

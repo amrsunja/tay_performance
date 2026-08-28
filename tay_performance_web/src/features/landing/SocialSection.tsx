@@ -13,6 +13,7 @@ import styles from './landing.module.css'
 export const SOCIAL_LINKS = {
   instagram: 'https://www.instagram.com/tay_performance/',
   tiktok: 'https://www.tiktok.com/@tay_performance',
+  facebook: 'https://www.facebook.com/p/Tay-Performance-100086047330108/',
 } as const
 
 const VIDEOS = [video1, video2, video3, video4]
@@ -23,6 +24,30 @@ function InstagramIcon() {
       <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" />
       <circle cx="12" cy="12" r="4.4" />
       <circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" stroke="none" />
+      {muted ? (
+        <path d="M16 9l5 6M21 9l-5 6" />
+      ) : (
+        <>
+          <path d="M15.5 9.2a4 4 0 0 1 0 5.6" />
+          <path d="M18.3 6.5a8 8 0 0 1 0 11" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+      <path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.8c0-.9.3-1.6 1.6-1.6h1.7V4.4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.2v2.3H7.4V14h2.8v8h3.3z" />
     </svg>
   )
 }
@@ -39,6 +64,25 @@ export default function SocialSection() {
   const sliderRef = useRef<HTMLDivElement>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const [playing, setPlaying] = useState<number | null>(0) // first autoplays
+  // per-video sound state — the first one must start muted (autoplay policy)
+  const [muted, setMuted] = useState<boolean[]>(() => VIDEOS.map((_, i) => i === 0))
+
+  const toggleMute = (i: number) => {
+    const el = videoRefs.current[i]
+    const next = !muted[i]
+    setMuted((m) => m.map((v, j) => (j === i ? next : v)))
+    if (el) {
+      el.muted = next
+      if (!next && el.paused) {
+        // unmuting a paused card → play it (user gesture, sound allowed)
+        videoRefs.current.forEach((v, j) => {
+          if (v && j !== i) v.pause()
+        })
+        el.play()
+        setPlaying(i)
+      }
+    }
+  }
 
   const scrollBy = (dir: -1 | 1) => {
     const el = sliderRef.current
@@ -52,7 +96,7 @@ export default function SocialSection() {
       videoRefs.current.forEach((v, j) => {
         if (v && j !== i) v.pause()
       })
-      el.muted = false // user gesture → sound allowed
+      el.muted = muted[i] // respect the speaker toggle
       el.play()
       setPlaying(i)
     } else {
@@ -94,6 +138,16 @@ export default function SocialSection() {
               <TikTokIcon />
               <span className={`mono ${styles.socialBtnLabel}`}>@tay_performance</span>
             </a>
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.socialBtn}
+              aria-label="Facebook Tay Performance"
+            >
+              <FacebookIcon />
+              <span className={`mono ${styles.socialBtnLabel}`}>Tay Performance</span>
+            </a>
           </div>
         </div>
 
@@ -104,11 +158,18 @@ export default function SocialSection() {
 
           <div ref={sliderRef} className={styles.socialSlider}>
             {VIDEOS.map((src, i) => (
-              <button
+              <div
                 key={src}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={styles.socialVideoCard}
                 onClick={() => toggle(i)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggle(i)
+                  }
+                }}
                 aria-label={playing === i ? 'Mettre en pause' : 'Lire la vidéo'}
               >
                 <video
@@ -132,10 +193,19 @@ export default function SocialSection() {
                 >
                   <span className={styles.socialVideoPlay}>▶</span>
                 </span>
-                <span className={styles.socialVideoBadge} aria-hidden>
-                  <InstagramIcon />
-                </span>
-              </button>
+                <button
+                  type="button"
+                  className={styles.socialVideoBadge}
+                  aria-label={muted[i] ? 'Activer le son' : 'Couper le son'}
+                  aria-pressed={!muted[i]}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleMute(i)
+                  }}
+                >
+                  <SpeakerIcon muted={muted[i]} />
+                </button>
+              </div>
             ))}
           </div>
 
@@ -145,7 +215,7 @@ export default function SocialSection() {
         </div>
 
         <div className={`mono ${styles.socialHint}`}>
-          L'atelier en vidéo · retrouvez tout sur Instagram et TikTok
+          L'atelier en vidéo · retrouvez tout sur Instagram, TikTok et Facebook
         </div>
       </div>
     </section>

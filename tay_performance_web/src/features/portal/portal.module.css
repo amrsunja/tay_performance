@@ -401,3 +401,131 @@
     font-size: 32px;
   }
 }
+
+/* ---------- /adresse ---------- */
+.addressGrid {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 22px;
+  align-items: stretch;
+}
+.addressCard {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+  padding: 24px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
+.addressLink {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.addressLink:hover {
+  border-color: var(--octane-500);
+  transform: translateY(-1px);
+}
+.addressPin {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(41, 171, 226, 0.12);
+  color: var(--accent-500);
+  flex: 0 0 auto;
+}
+.addressStreet {
+  display: block;
+  font-size: 18px;
+  color: var(--text);
+}
+.addressCity {
+  display: block;
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+.addressHint {
+  display: block;
+  font-size: 11px;
+  color: var(--octane-300);
+  margin-top: 10px;
+}
+.addressMeta {
+  display: grid;
+  gap: 18px;
+}
+.addressLabel {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.hoursList {
+  display: grid;
+  gap: 4px;
+}
+.hoursRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+.mapCard {
+  position: relative;
+  display: block;
+  min-height: 420px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-inset);
+}
+.mapCta {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 11px;
+  background: rgba(10, 12, 15, 0.82);
+  backdrop-filter: blur(6px);
+}
+.mapFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 0;
+  display: block;
+  filter: saturate(0.85) contrast(1.05);
+}
+@media (max-width: 860px) {
+  .addressGrid {
+    grid-template-columns: 1fr;
+  }
+  .mapCard,
+  .mapCta {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 11px;
+  background: rgba(10, 12, 15, 0.82);
+  backdrop-filter: blur(6px);
+}
+.mapFrame {
+    min-height: 320px;
+  }
+}

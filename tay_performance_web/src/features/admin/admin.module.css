@@ -772,10 +772,11 @@
 }
 
 .timeField {
-  max-width: 74px;
+  width: 118px;
+  max-width: none;
   text-align: center;
-  padding: 6px 8px;
-  font-size: 12.5px;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 .selectField {

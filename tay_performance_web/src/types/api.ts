@@ -256,6 +256,8 @@ export interface AdminBookingRow {
   userId: string | null
   /** true when the profile booked for someone else — contact* = that person, booker* = the profile */
   forOther: boolean
+  /** admin replaced the computed total (price_breakdown.computed_total keeps the original) */
+  priceOverridden: boolean
   bookerName: string | null
   bookerPhone: string | null
   bookerEmail: string | null

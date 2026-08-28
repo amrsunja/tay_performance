@@ -26,6 +26,7 @@ interface AdminBookingSelectRow {
   user_id: string | null
   created_by_admin: boolean
   for_other: boolean
+  price_overridden: boolean
   profiles: { full_name: string | null; phone: string | null; email: string | null } | null
   booking_tint_specs: { zone_code: string; vlt_percent: number; is_legal: boolean }[]
   vehicle_variants: {
@@ -36,7 +37,7 @@ interface AdminBookingSelectRow {
 }
 
 const ADMIN_BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
-  price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin, for_other,
+  price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin, for_other, price_overridden,
   profiles(full_name, phone, email),
   booking_tint_specs(zone_code, vlt_percent, is_legal),
   vehicle_variants(body_style_code, body_styles(label_fr),
@@ -61,6 +62,7 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     clientNotes: b.client_notes,
     userId: b.user_id,
     forOther: Boolean(b.for_other),
+    priceOverridden: Boolean(b.price_overridden),
     bookerName: b.profiles?.full_name ?? null,
     bookerPhone: b.profiles?.phone ?? null,
     bookerEmail: b.profiles?.email ?? null,
@@ -275,6 +277,8 @@ export interface AdminCreateBookingInput {
   contactEmail?: string | null
   clientNotes?: string | null
   bay?: number
+  /** admin-set total (€); null/undefined keeps the computed quote */
+  priceOverride?: number | null
 }
 
 export async function adminCreateBooking(input: AdminCreateBookingInput): Promise<{ reference: string }> {
@@ -289,6 +293,7 @@ export async function adminCreateBooking(input: AdminCreateBookingInput): Promis
     p_bay: input.bay ?? 1,
     p_user_id: null,
     p_vehicle_id: null,
+    p_price_override: input.priceOverride ?? null,
   })
   if (error) throw error
   return { reference: (data as { reference: string }).reference }

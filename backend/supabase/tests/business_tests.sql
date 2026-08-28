@@ -263,6 +263,25 @@ begin
   if (b->>'status') <> 'confirmed' then raise exception 'T6 admin booking status %', b->>'status'; end if;
 end $$;
 
+-- T6b — admin price override (0013): total replaced, computed total kept in the breakdown
+do $$
+declare s timestamptz; b jsonb; r record;
+begin
+  select slot_start into s from public._day_slots(current_setting('test.day')::date + 2, 60, null)
+    where state = 'available' order by slot_start desc limit 1;
+  b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_window","vlt_percent":35}]',
+    s, 'Walk-in Remise', '0700000001', null, null, 1, null, null, 199.90);
+  if (b->>'price_total')::numeric <> 199.90 or not (b->>'price_overridden')::boolean then
+    raise exception 'T6b override not applied: %', b;
+  end if;
+  select price_total, price_overridden, (price_breakdown->>'computed_total')::numeric as computed into r
+    from public.bookings where id = (b->>'id')::uuid;
+  if r.computed is null or r.computed = r.price_total or not r.price_overridden then
+    raise exception 'T6b breakdown mismatch';
+  end if;
+end $$;
+
 insert into public.booking_admin_notes (booking_id, notes, updated_by)
 values (current_setting('test.booking_a')::uuid, 'note interne — jamais visible client', auth.uid());
 

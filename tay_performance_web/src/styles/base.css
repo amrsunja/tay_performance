@@ -7,6 +7,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark; /* native pickers, select arrows & scrollbars render for a dark UI */
 }
 
 body {
@@ -260,14 +261,46 @@ button {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.04em;
-  padding: 3px 9px;
+  line-height: 1;
+  padding: 9px 16px;
   border-radius: var(--r-pill);
-  border: 1px solid #2a3340;
-  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-soft);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+/* chips are often <button>s — neutralise the UA button look */
+button.chip {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+button.chip:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--octane-500);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+button.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+button.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* selected state (aria-pressed) — accent outline + tinted fill, still dark */
+.chip[aria-pressed='true'] {
+  border-color: var(--octane-500);
+  background: rgba(255, 158, 27, 0.12);
+  color: var(--octane-300);
 }
 .chip--front { border-color: rgba(255, 158, 27, 0.3); color: var(--octane-300); }
 .chip--rear { border-color: rgba(41, 171, 226, 0.35); color: #7cc4ec; }
@@ -360,6 +393,14 @@ input[type='range'].rng--octane::-moz-range-thumb {
   font-size: 14px;
   padding: 11px 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field {
+  color-scheme: dark;
+}
+.field::-webkit-calendar-picker-indicator {
+  filter: invert(0.85) brightness(1.2);
+  opacity: 0.9;
+  cursor: pointer;
 }
 .field:focus {
   outline: none;

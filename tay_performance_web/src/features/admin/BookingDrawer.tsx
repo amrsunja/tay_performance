@@ -3,7 +3,7 @@
    (client-invisible), before/after photos, warranty. */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import StatusPill from '../../components/ui/StatusPill'
+import StatusPill, { describeTransition } from '../../components/ui/StatusPill'
 import { useAuth } from '../../auth/AuthProvider'
 import {
   advanceStatus,
@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: 'Démarrer la pose',
   completed: 'Terminer',
   cancelled: 'Annuler',
-  no_show: 'No-show',
+  no_show: 'Client absent',
 }
 
 const dateFmt = new Intl.DateTimeFormat('fr-FR', {
@@ -175,6 +175,9 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                 <span className="mono" style={{ marginLeft: 'auto', fontSize: 17, color: 'var(--text-hi)' }}>
                   {formatEuro(b.priceTotal)}
                 </span>
+                {b.priceOverridden && (
+                  <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--octane-300)' }}>prix modifié par l'atelier</span>
+                )}
               </div>
             </div>
 
@@ -248,10 +251,13 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
             <div style={{ display: 'grid', gap: 6 }}>
               <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>Historique</span>
               {(history.data ?? []).map((h, i) => (
-                <div key={i} className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                  {new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(new Date(h.changedAt))}{' '}
-                  · {h.fromStatus ? `${h.fromStatus} → ` : ''}{h.toStatus}
-                  {h.note ? ` — ${h.note}` : ''}
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 13 }}>
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                    {new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(new Date(h.changedAt))}
+                  </span>
+                  <span style={{ color: 'var(--text-soft)' }}>
+                    {describeTransition(h.fromStatus, h.toStatus, h.note)}
+                  </span>
                 </div>
               ))}
             </div>
