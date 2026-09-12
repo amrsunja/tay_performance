@@ -1,7 +1,7 @@
 /* Single source of truth for public identity: canonical URL, developer credit, SEO copy.
    ⚠ SITE_URL must match the production domain — also mirrored in public/sitemap.xml + public/robots.txt. */
 
-export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') || 'https://www.tay-performance.fr'
+export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') || 'https://tayperformance.fr'
 
 export const SITE_NAME = 'Tay Performance'
 export const SITE_TAGLINE = 'Vitres teintées, covering & detailing à Strasbourg / Illkirch-Graffenstaden'

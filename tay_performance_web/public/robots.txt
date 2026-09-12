@@ -7,4 +7,4 @@ Disallow: /reservations
 Disallow: /profil
 Disallow: /connexion
 
-Sitemap: https://www.tay-performance.fr/sitemap.xml
+Sitemap: https://tayperformance.fr/sitemap.xml
