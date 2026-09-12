@@ -98,7 +98,7 @@ export async function getGenerations(modelId: string): Promise<GenerationRow[]> 
 export async function getBodyStyles(): Promise<BodyStyleRow[]> {
   const { data, error } = await supabase
     .from('body_styles')
-    .select('code, label_fr, size_class, display_order, default_labor_minutes')
+    .select('code, label_fr, size_class, display_order, default_labor_minutes, quote_on_request')
     .order('display_order')
   if (error) throw error
   return (data ?? []).map((b) => ({
@@ -107,6 +107,7 @@ export async function getBodyStyles(): Promise<BodyStyleRow[]> {
     sizeClass: b.size_class as BodyStyleRow['sizeClass'],
     displayOrder: Number(b.display_order),
     defaultLaborMinutes: Number(b.default_labor_minutes),
+    quoteOnRequest: Boolean(b.quote_on_request),
   }))
 }
 
@@ -167,12 +168,13 @@ export async function ensureVariant(
 
 /** Build the funnel result from a search hit + a resolved variant. */
 export function resolvedFromHit(
-  hit: Pick<VehicleSearchHit, 'make' | 'model' | 'generation' | 'yearStart' | 'yearEnd'>,
+  hit: Pick<VehicleSearchHit, 'make' | 'model' | 'generation' | 'yearStart' | 'yearEnd'> & { modelId?: string },
   variant: { id: string; baseLaborMinutes: number; labelFr: string },
   bodyStyle: BodyStyleCode,
 ): ResolvedVehicle {
   return {
     variantId: variant.id,
+    modelId: hit.modelId,
     baseLaborMinutes: variant.baseLaborMinutes,
     make: hit.make,
     model: hit.model,
@@ -248,11 +250,12 @@ export async function resolveVariant(variantId: string): Promise<ResolvedVehicle
     name?: string
     year_start?: number
     year_end?: number | null
-    models?: { name?: string; makes?: { name?: string } | null } | null
+    models?: { id?: string; name?: string; makes?: { name?: string } | null } | null
   } | null
   const model = gen?.models?.name ?? ''
   return {
     variantId: data.id as string,
+    modelId: gen?.models?.id,
     baseLaborMinutes: Number(data.base_labor_minutes),
     make: gen?.models?.makes?.name ?? '',
     model,

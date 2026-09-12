@@ -11,8 +11,10 @@ import VehicleFunnel from '../booking/VehicleStep'
 import type { GarageVehicle, ResolvedVehicle } from '../../types/api'
 import { errorMessage } from '../../lib/supabase'
 import styles from './portal.module.css'
+import { useSeo } from '../../lib/seo'
 
 export default function GaragePage() {
+  useSeo({ title: 'Mon garage', noindex: true })
   useReveal()
   const { session, ensureSession } = useAuth()
   const queryClient = useQueryClient()

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/logo.svg'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthProvider'
+import { useSeo } from '../../lib/seo'
 
 /** Email + password sign-in for dashboard-created admin accounts only.
     Non-admin credentials are rejected with a generic error (docs/03 §1.2). */
 export default function AdminLoginPage() {
+  useSeo({ title: 'Connexion administrateur', noindex: true })
   const navigate = useNavigate()
   const { refreshRole } = useAuth()
   const [email, setEmail] = useState('')

@@ -111,3 +111,25 @@ export function formatPhoneDisplay(e164: string | null | undefined): string {
   if (c.iso === 'FR') return formatNational(national, c)
   return `+${c.dial} ${formatNational(national, c)}`.trim()
 }
+
+/** "06 12…" ≡ "+336 12…" — same rule as admin_list_clients (0016) — shared by admin list filters */
+export function phoneKey(s: string): string {
+  return s.replace(/\D/g, '').replace(/^(0033|33|0)/, '')
+}
+
+export function filterBookings<T extends { contactName: string; contactPhone: string; reference: string; bookerName?: string | null; bookerPhone?: string | null }>(
+  rows: T[],
+  query: string,
+): T[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return rows
+  const digits = phoneKey(q)
+  return rows.filter(
+    (b) =>
+      b.contactName.toLowerCase().includes(q) ||
+      b.reference.toLowerCase().includes(q) ||
+      (b.bookerName ?? '').toLowerCase().includes(q) ||
+      (digits.length >= 3 && (phoneKey(b.contactPhone).includes(digits) || phoneKey(b.bookerPhone ?? '').includes(digits))),
+  )
+}
+

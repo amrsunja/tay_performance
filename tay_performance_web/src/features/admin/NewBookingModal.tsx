@@ -10,16 +10,16 @@ import { getCatalog } from '../../api/catalog'
 import { getDaySlots } from '../../api/availability'
 import { adminCreateBooking } from '../../api/admin'
 import { errorMessage } from '../../lib/supabase'
-import { computeLocalQuote, formatDuration, formatEuro, INITIAL_DRAFT } from '../booking/useBookingDraft'
+import { computeLocalQuote, formatDuration, formatEuro, formatPrice, INITIAL_DRAFT } from '../booking/useBookingDraft'
 import type { ResolvedVehicle } from '../../types/api'
-import type { TintZoneCode } from '../../types/domain'
+import { TLV_STOPS, type TintZoneCode } from '../../types/domain'
 
 const slotTimeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
 export default function NewBookingModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
   const [vehicle, setVehicle] = useState<ResolvedVehicle | null>(null)
-  const [selected, setSelected] = useState<TintZoneCode[]>(['rear_sides', 'rear_window'])
+  const [selected, setSelected] = useState<TintZoneCode[]>(['rear_sides'])
   const [frontVlt, setFrontVlt] = useState(70)
   const [rearVlt, setRearVlt] = useState(20)
   const [day, setDay] = useState('')
@@ -78,6 +78,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
   const parsedPrice = priceInput.trim() === '' ? null : Number(priceInput.replace(',', '.'))
   const priceValid = parsedPrice === null || (Number.isFinite(parsedPrice) && parsedPrice >= 0)
   const priceOverride = parsedPrice !== null && priceValid && parsedPrice !== quote.total ? parsedPrice : null
+  const onRequest = quote.onRequest && quote.lines.length > 0
 
   const toggleZone = (zone: TintZoneCode) =>
     setSelected((s) => (s.includes(zone) ? s.filter((z) => z !== zone) : [...s, zone]))
@@ -88,7 +89,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'grid', gap: 12 }}>
           <span style={{ color: 'var(--status-success)', fontSize: 15 }}>
             ✓ <span className="mono">{reference}</span> — confirmée pour {contactName}
-            {priceOverride !== null ? ` · ${formatEuro(priceOverride)} (prix modifié)` : ''}.
+            {priceOverride !== null ? ` · ${formatEuro(priceOverride)}${onRequest ? '' : ' (prix modifié)'}` : ''}.
           </span>
           <button type="button" className="cta" style={{ fontSize: 14, padding: '12px 22px', borderRadius: 12, justifySelf: 'start' }} onClick={onClose}>
             Fermer
@@ -112,7 +113,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
-            {/* zones + VLT */}
+            {/* zones + TLV */}
             <div style={{ display: 'grid', gap: 8 }}>
               <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>Zones</span>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -130,23 +131,23 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
               </div>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                 <label className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  VLT avant
+                  TLV avant
                   <select className="field mono" value={frontVlt} onChange={(e) => setFrontVlt(Number(e.target.value))} style={{ padding: '8px 10px' }}>
-                    {(catalog.data?.vltStops ?? [5, 20, 35, 50, 70, 85]).map((v) => (
+                    {(catalog.data?.vltStops ?? [...TLV_STOPS]).map((v) => (
                       <option key={v} value={v}>{v}%{v < 70 ? ' ⚠' : ''}</option>
                     ))}
                   </select>
                 </label>
                 <label className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  VLT arrière
+                  TLV arrière
                   <select className="field mono" value={rearVlt} onChange={(e) => setRearVlt(Number(e.target.value))} style={{ padding: '8px 10px' }}>
-                    {(catalog.data?.vltStops ?? [5, 20, 35, 50, 70, 85]).map((v) => (
+                    {(catalog.data?.vltStops ?? [...TLV_STOPS]).map((v) => (
                       <option key={v} value={v}>{v}%</option>
                     ))}
                   </select>
                 </label>
                 <span className="mono" style={{ fontSize: 13, color: 'var(--text-soft)', alignSelf: 'center' }}>
-                  {formatDuration(quote.minutes)} · {formatEuro(quote.total)}
+                  {formatDuration(quote.minutes)} · {formatPrice(quote.total)}
                   {quote.nonCompliant ? ' · ⚠ hors conformité' : ''}
                 </span>
               </div>
@@ -160,7 +161,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                   <input
                     className="field mono"
                     inputMode="decimal"
-                    placeholder={quote.total.toFixed(2)}
+                    placeholder={quote.total == null ? 'sur devis' : quote.total.toFixed(2)}
                     value={priceInput}
                     onChange={(e) => setPriceInput(e.target.value.replace(/[^\d.,]/g, ''))}
                     aria-label="Prix total (€)"
@@ -169,10 +170,14 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                   />
                   <span className="mono" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-dim)' }}>€</span>
                 </div>
-                {priceOverride !== null ? (
+                {onRequest ? (
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>
+                    {parsedPrice === null ? 'sur devis — laissez vide pour fixer le prix plus tard' : 'prix fixé (visible par le client)'}
+                  </span>
+                ) : priceOverride !== null ? (
                   <>
                     <span className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>
-                      prix modifié · calculé {formatEuro(quote.total)}
+                      prix modifié · calculé {formatPrice(quote.total)}
                     </span>
                     <button type="button" className="navlink mono" style={{ fontSize: 12 }} onClick={() => setPriceInput('')}>
                       remettre le prix auto

@@ -2,8 +2,8 @@
    The local quote is instant UX; the authoritative snapshot is recomputed by the
    create_booking RPC server-side (docs/04 §3). Same math, same inputs. */
 import { useMemo, useReducer } from 'react'
-import { FRONT_LEGAL_MIN_VLT, type TintZoneCode } from '../../types/domain'
-import type { Catalog, CatalogZone, CreatedBooking, QuoteSpec, ResolvedVehicle, SlotHold } from '../../types/api'
+import { FRONT_LEGAL_MIN_VLT, TLV_STOPS, type TintZoneCode } from '../../types/domain'
+import type { Catalog, CatalogZone, CreatedBooking, ModelPriceOverride, PricingRuleInfo, QuoteSpec, ResolvedVehicle, SlotHold } from '../../types/api'
 
 export type BookingStep = 'vehicle' | 'config' | 'calendar' | 'confirm'
 
@@ -57,7 +57,7 @@ export type DraftAction =
 export const INITIAL_DRAFT: DraftState = {
   step: 'vehicle',
   vehicle: null,
-  selected: ['rear_sides', 'rear_window'],
+  selected: ['rear_sides'],
   frontVlt: 70,
   rearVlt: 20,
   ack: false,
@@ -128,16 +128,19 @@ const ZONE_ORDER: TintZoneCode[] = ['pare_brise', 'front_sides', 'rear_sides', '
 export interface QuoteLine {
   zone: CatalogZone
   vlt: number
+  /** pack price for this body style (0 when sur devis) */
   price: number
+  minutes: number
+  /** price comes from a per-model override (Tesla Model 3 …) */
+  overridden: boolean
 }
 
 export interface LocalQuote {
   lines: QuoteLine[]
-  base: number
-  labor: number
-  laborRate: number
-  limoSupplement: number
-  total: number
+  /** null = sur devis (utilitaire / pick-up): the workshop sets the price after analysis */
+  total: number | null
+  onRequest: boolean
+  modelOverride: boolean
   minutes: number
   frontSelected: boolean
   frontIllegal: boolean
@@ -145,19 +148,62 @@ export interface LocalQuote {
   specs: QuoteSpec[]
 }
 
+/** Legacy specs (rear_window, panoramic_roof) → v2 packs. */
+export function normalizeSelection(zones: TintZoneCode[]): TintZoneCode[] {
+  const out = new Set<TintZoneCode>()
+  for (const z of zones) {
+    if (z === 'rear_window') out.add('rear_sides')
+    else if (z === 'panoramic_roof') continue
+    else out.add(z)
+  }
+  return Array.from(out)
+}
+
+/** Snap any percentage onto the TLV levels sold (85 → 70, 10 → 5 …). */
+export function nearestTlv(v: number): number {
+  return TLV_STOPS.reduce((best, s) => (Math.abs(s - v) < Math.abs(best - v) ? s : best), TLV_STOPS[0] as number)
+}
+
 export function vltForZone(zone: CatalogZone, frontVlt: number, rearVlt: number): number {
   return zone.group === 'avant' ? frontVlt : rearVlt
 }
 
-/** Full pricing formula — mirrors public._compute_quote exactly (docs/04 §2–3). */
+/** Pack price of a zone for a body style, with the optional per-model override. */
+export function zonePrice(
+  zone: Pick<CatalogZone, 'code'>,
+  rule: Pick<PricingRuleInfo, 'rearPrice' | 'frontPrice' | 'windshieldPrice'> | undefined,
+  override?: Pick<ModelPriceOverride, 'rearPrice' | 'frontPrice' | 'windshieldPrice'> | null,
+): { price: number; overridden: boolean } {
+  switch (zone.code) {
+    case 'rear_sides':
+      return override?.rearPrice != null ? { price: override.rearPrice, overridden: true } : { price: rule?.rearPrice ?? 0, overridden: false }
+    case 'front_sides':
+      return override?.frontPrice != null ? { price: override.frontPrice, overridden: true } : { price: rule?.frontPrice ?? 0, overridden: false }
+    case 'pare_brise':
+      return override?.windshieldPrice != null
+        ? { price: override.windshieldPrice, overridden: true }
+        : { price: rule?.windshieldPrice ?? 0, overridden: false }
+    default:
+      return { price: 0, overridden: false }
+  }
+}
+
+/** Minutes of a zone: fixed minutes (pare-brise) + share of the pose time (arrière 60 % / avant 40 %). */
+export function zoneMinutes(zone: Pick<CatalogZone, 'minutes' | 'timeSharePct'>, poseMinutes: number): number {
+  return zone.minutes + Math.round((poseMinutes * zone.timeSharePct) / 100)
+}
+
+/** Pricing v2 — mirrors public._compute_quote exactly (migration 0016). */
 export function computeLocalQuote(catalog: Catalog | undefined, state: DraftState): LocalQuote {
   const empty: LocalQuote = {
-    lines: [], base: 0, labor: 0, laborRate: 0, limoSupplement: 0, total: 0, minutes: 0,
+    lines: [], total: 0, onRequest: false, modelOverride: false, minutes: 0,
     frontSelected: false, frontIllegal: state.frontVlt < FRONT_LEGAL_MIN_VLT, nonCompliant: false, specs: [],
   }
   if (!catalog || !state.vehicle) return empty
 
   const rule = catalog.rules[state.vehicle.bodyStyle]
+  const override = state.vehicle.modelId ? catalog.modelOverrides[state.vehicle.modelId] : undefined
+  const onRequest = Boolean(rule?.quoteOnRequest)
   const gran = catalog.settings.slotGranularityMin
 
   const lines: QuoteLine[] = ZONE_ORDER.filter((code) => state.selected.includes(code))
@@ -165,31 +211,23 @@ export function computeLocalQuote(catalog: Catalog | undefined, state: DraftStat
     .filter((z): z is CatalogZone => Boolean(z))
     .map((zone) => {
       const vlt = vltForZone(zone, state.frontVlt, state.rearVlt)
-      return { zone, vlt, price: zone.deltas[vlt] ?? zone.price }
+      const { price, overridden } = zonePrice(zone, rule, override)
+      return { zone, vlt, price: onRequest ? 0 : price, minutes: zoneMinutes(zone, state.vehicle!.baseLaborMinutes), overridden }
     })
 
+  const rawMinutes = lines.reduce((sum, l) => sum + l.minutes, 0)
+  const minutes = lines.length > 0 ? Math.max(gran, Math.ceil(rawMinutes / gran) * gran) : 0
   const zonesTotal = lines.reduce((sum, l) => sum + l.price, 0)
-  const rawMinutes =
-    lines.reduce((sum, l) => sum + l.zone.minutes, 0) +
-    (lines.length > 0 ? state.vehicle.baseLaborMinutes : 0)
-  const minutes = lines.length > 0 ? Math.ceil(rawMinutes / gran) * gran : 0
-  const laborRate = rule?.laborRatePerMin ?? 0
-  const labor = Math.round(minutes * laborRate * 100) / 100
-  const hasLimo = lines.some((l) => l.vlt <= catalog.settings.limoVltThreshold)
-  const limoSupplement = hasLimo && lines.length > 0 ? catalog.settings.limoSupplement : 0
-  const base = lines.length > 0 ? (rule?.basePrice ?? 0) : 0
-  const total = Math.round((base + zonesTotal + labor + limoSupplement) * 100) / 100
+  const total = lines.length === 0 ? 0 : onRequest ? null : Math.round(zonesTotal * 100) / 100
 
   const frontSelected = lines.some((l) => l.zone.group === 'avant')
   const frontIllegal = state.frontVlt < FRONT_LEGAL_MIN_VLT
 
   return {
     lines,
-    base,
-    labor,
-    laborRate,
-    limoSupplement,
     total,
+    onRequest,
+    modelOverride: lines.some((l) => l.overridden),
     minutes,
     frontSelected,
     frontIllegal,
@@ -217,4 +255,10 @@ export function formatDuration(minutes: number): string {
 
 export function formatEuro(n: number): string {
   return Number.isInteger(n) ? `${n}€` : `${n.toFixed(2)}€`
+}
+
+/** Price cell for a booking / quote: null = the workshop still has to set it. */
+export const PRICE_PENDING_LABEL = 'Sur devis'
+export function formatPrice(n: number | null | undefined): string {
+  return n == null ? PRICE_PENDING_LABEL : formatEuro(n)
 }

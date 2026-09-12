@@ -40,8 +40,11 @@ export type SlotStatus = 'open' | 'held' | 'booked' | 'blocked'
 
 export type LegalFlag = 'compliant' | 'non_compliant_ack'
 
-/** France 2026 — minimum VLT allowed on front glazing. */
+/** France 2026 — minimum TLV (taux de lumière visible, "VLT") allowed on front glazing. */
 export const FRONT_LEGAL_MIN_VLT = 70
+
+/** TLV levels sold by the workshop (mirrors active vlt_levels rows). */
+export const TLV_STOPS = [5, 15, 20, 35, 50, 70] as const
 
 export interface TintZone {
   code: TintZoneCode
@@ -117,15 +120,6 @@ export interface ClientRow {
   vehicles: number
   bookings: number
   lastVisit: string
-}
-
-export interface PricingRuleRow {
-  bodyStyle: BodyStyleCode
-  labelFr: string
-  sizeClass: 'S' | 'M' | 'L' | 'XL'
-  glassFactor: number
-  basePrice: number
-  laborRatePerMin: number
 }
 
 export interface WorkshopDayConfig {

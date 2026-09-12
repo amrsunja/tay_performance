@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
 import { useReveal } from '../../hooks/useReveal'
+import { useSeo } from '../../lib/seo'
 import { getCatalog } from '../../api/catalog'
 import styles from '../portal/portal.module.css'
 
@@ -34,6 +35,12 @@ const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dima
 
 export default function AddressPage() {
   useReveal()
+  useSeo({
+    title: "Nous trouver — Atelier vitres teintées à Illkirch-Graffenstaden (Strasbourg)",
+    description:
+      "Tay Performance, 19 Rue de l'Industrie, 67400 Illkirch-Graffenstaden — à 10 min de Strasbourg centre. Horaires, plan d'accès et parking sur place pour votre pose de vitres teintées.",
+    path: '/adresse',
+  })
   const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 5 * 60_000 })
   const address = catalog.data?.settings.workshopAddress || WORKSHOP.full
   const phone = catalog.data?.settings.contactPhone || '06 05 50 50 28'

@@ -1,6 +1,7 @@
 import type { Dispatch } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
+import DevCard from '../../components/ui/DevCard'
 import type { ResolvedVehicle } from '../../types/api'
 import { formatDuration, formatEuro, type DraftAction, type DraftState } from './useBookingDraft'
 import styles from './booking.module.css'
@@ -32,7 +33,9 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
     ['Heure', timeFmt.format(start)],
     ['Prestation', booking.specs.map((s) => s.label_fr).join(', ')],
     ['Durée estimée', formatDuration(booking.duration_min)],
-    ['Total à régler', formatEuro(Number(booking.price_total)), true],
+    booking.price_total == null
+      ? ['Prix', 'Communiqué par l’atelier après analyse', true]
+      : ['Total à régler', formatEuro(Number(booking.price_total)), true],
   ]
 
   return (
@@ -47,6 +50,9 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
         <h1 className={`clash ${styles.h1}`}>Votre créneau est réservé.</h1>
         <p className={styles.confirmLede}>
           L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation.
+          {booking.price_total == null
+            ? ' Votre véhicule nécessite une analyse : l’atelier vous rappelle pour fixer le prix, qui apparaîtra ensuite dans vos réservations.'
+            : ''}
           {booking.for_other
             ? ' La personne concernée reçoit la confirmation ; vous en recevez une copie.'
             : ' Votre véhicule a été ajouté à votre garage.'}
@@ -92,6 +98,9 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
             </Link>
           </div>
         )}
+
+        {/* developer credit — once per browser, static, no backend */}
+        <DevCard />
 
         <div className={styles.confirmActions}>
           <Link to="/reservations" className="cta" style={{ fontSize: 15, padding: '15px 26px', borderRadius: 13 }}>

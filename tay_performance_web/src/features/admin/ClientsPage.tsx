@@ -8,7 +8,7 @@ import StatusPill from '../../components/ui/StatusPill'
 import { getClientBookings, listClients, updateClientProfile } from '../../api/admin'
 import { errorMessage } from '../../lib/supabase'
 import type { AdminClientRow } from '../../types/api'
-import { formatEuro } from '../booking/useBookingDraft'
+import { formatPrice } from '../booking/useBookingDraft'
 import styles from './admin.module.css'
 
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -44,10 +44,16 @@ export default function ClientsPage() {
         <input
           className="field"
           style={{ maxWidth: 320 }}
-          placeholder="Rechercher un client, un e-mail, une plaque…"
+          placeholder="Nom, téléphone (06… ou +33…), e-mail, plaque…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Rechercher un client"
+          type="search"
+          inputMode="search"
         />
+        <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', alignSelf: 'center' }}>
+          téléphone : les espaces et l'indicatif sont ignorés
+        </span>
       </div>
 
       <div className={styles.tableCard}>
@@ -171,7 +177,7 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
               <span className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>{b.reference}</span>
               <span style={{ fontSize: 13, color: 'var(--text-soft)', flex: 1 }}>{b.vehicleLabel}</span>
               <StatusPill status={b.status} />
-              <span className="mono" style={{ fontSize: 13 }}>{formatEuro(b.priceTotal)}</span>
+              <span className="mono" style={{ fontSize: 13 }}>{formatPrice(b.priceTotal)}</span>
             </div>
           ))}
           {!bookings.isPending && (bookings.data ?? []).length === 0 && (

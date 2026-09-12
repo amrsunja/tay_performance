@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
 import SectionTag from '../../components/ui/SectionTag'
 import CountUp from '../../components/ui/CountUp'
 import { useReveal } from '../../hooks/useReveal'
+import { useSeo } from '../../lib/seo'
+import { DEFAULT_DESCRIPTION, SERVICE_AREA } from '../../lib/site'
 import SocialSection from './SocialSection'
 import heroImg from '../../assets/visuel3.jpg'
 import introVideo from '../../assets/videos/intro.mp4'
@@ -16,17 +18,55 @@ import visuel5 from '../../assets/visuel5.jpg'
 import visuel6 from '../../assets/visuel6.jpg'
 import styles from './landing.module.css'
 
+/* The five services Tay Performance actually sells — shown as a slider (mobile: swipe). */
 const SERVICES = [
-  { id: '01', tone: 'blue', title: 'Covering & Wrapping', body: 'Changement de teinte, finitions mat / satin / brillant, protection carrosserie.' },
-  { id: '02', tone: 'red', title: 'Detailing premium', body: 'Rénovation, polissage, traitement céramique longue durée.' },
-  { id: '03', tone: 'blue', title: 'Angel Eyes & optique', body: 'Éclairage LED, rénovation de phares, finition signature.' },
-  { id: '04', tone: 'amber', title: 'Pose vitrage', body: 'Remplacement et calibrage, essuie-glaces, finitions atelier.' },
+  {
+    id: '01',
+    tone: 'amber',
+    featured: true,
+    img: visuel6,
+    title: 'Vitres teintées',
+    body: 'Films découpés au véhicule, pose intérieure sans bulle, teintes de 5 % à 70 % TLV. Avant, arrière, lunette, pare-brise. Réservation et prix en ligne.',
+    cta: { to: '/reserver', label: 'Réserver une pose →' },
+  },
+  {
+    id: '02',
+    tone: 'blue',
+    img: visuel1,
+    title: 'Covering',
+    body: 'Changement de teinte total ou partiel, finitions mat / satin / brillant, protection de carrosserie.',
+    cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
+  },
+  {
+    id: '03',
+    tone: 'red',
+    img: visuel2,
+    title: 'Sellerie',
+    body: 'Rénovation et personnalisation de l’intérieur : sièges, volant, garnitures, cuir et alcantara.',
+    cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
+  },
+  {
+    id: '04',
+    tone: 'blue',
+    img: visuel4,
+    title: 'Detailing',
+    body: 'Rénovation esthétique, polissage, décontamination, traitement céramique longue durée.',
+    cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
+  },
+  {
+    id: '05',
+    tone: 'amber',
+    img: visuel5,
+    title: 'Éclairage intérieur',
+    body: 'Ambiance LED sur-mesure, éclairage d’habitacle et de seuils, finition signature.',
+    cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
+  },
 ] as const
 
 const STEPS = [
   { id: '01', tone: 'blue', title: 'Configurez', body: 'Sélectionnez votre véhicule, vos zones et vos teintes. Le prix et la durée s’affichent en direct.' },
   { id: '02', tone: 'amber', title: 'Réservez', body: 'Choisissez un créneau réel à l’atelier. Disponibilités en temps réel, aucune double réservation.' },
-  { id: '03', tone: 'red', title: 'Déposez', body: 'Vous déposez la voiture, vous repartez. Photos avant/après et garantie dans votre espace.' },
+  { id: '03', tone: 'red', title: 'Déposez', body: 'Vous déposez votre véhicule et le récupérez 90 minutes plus tard.' },
 ] as const
 
 const GALLERY = [
@@ -37,11 +77,57 @@ const GALLERY = [
   { src: visuel6, title: 'Film teinté · pose intérieure', caption: '', border: 'var(--octane-500)', cls: 'galWide' },
 ] as const
 
-const MARQUEE_ITEMS = ['VITRES TEINTÉES', 'COVERING', 'DETAILING', 'ANGEL EYES', 'PROTECTION CÉRAMIQUE', 'POSE VITRAGE']
+const MARQUEE_ITEMS = ['VITRES TEINTÉES', 'COVERING', 'SELLERIE', 'DETAILING', 'ÉCLAIRAGE INTÉRIEUR']
 const MARQUEE_DOTS = ['var(--brand-blue)', 'var(--octane-500)', 'var(--brand-red)']
+
+/* FAQ rich result — mirrors the #conformite section (keep both in sync). */
+const LANDING_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Les vitres teintées sont-elles légales en France ?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "Oui, à condition de respecter la réglementation : les vitres avant (pare-brise et vitres latérales avant) doivent laisser passer au moins 70 % de lumière (TLV ≥ 70 %). Les vitres arrière et la lunette sont libres. Tay Performance applique ces règles automatiquement dans son configurateur.",
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Quel est le prix d’une pose de vitres teintées à Strasbourg ?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Le tarif dépend du véhicule, des zones (avant, arrière, lunette, bande pare-soleil) et de la teinte choisie. Le configurateur en ligne de Tay Performance affiche le prix et la durée exacts en direct, avant de réserver un créneau à l’atelier d’Illkirch-Graffenstaden.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Combien de temps dure la pose de film teinté ?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Selon les zones, comptez généralement de 1 h à 3 h. La durée estimée est calculée automatiquement lors de la réservation en ligne, et vous déposez simplement le véhicule à l’heure du rendez-vous.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Où se trouve l’atelier Tay Performance ?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "19 Rue de l'Industrie, 67400 Illkirch-Graffenstaden, à 10 minutes de Strasbourg centre. Parking sur place. Nous intervenons pour toute l'Eurométropole de Strasbourg et le Bas-Rhin.",
+      },
+    },
+  ],
+}
 
 export default function LandingPage() {
   useReveal()
+  useSeo({
+    title: 'Vitres Teintées Strasbourg · Tay Performance — Film teinté, Covering, Detailing (Illkirch 67400)',
+    description: DEFAULT_DESCRIPTION,
+    path: '/',
+    jsonLd: LANDING_JSON_LD,
+  })
   const parallaxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,7 +148,7 @@ export default function LandingPage() {
       {/* ============ HERO ============ */}
       <section className={styles.hero}>
         <div ref={parallaxRef} className={styles.heroParallax}>
-          <img src={heroImg} alt="" className={styles.heroImg} />
+          <img src={heroImg} alt="Pose de vitres teintées sur-mesure à l'atelier Tay Performance, Illkirch-Graffenstaden (Strasbourg)" className={styles.heroImg} fetchPriority="high" />
         </div>
         {/* intro videos flanking the bg image (hidden ≤960px) */}
         <div className={styles.heroSideVideos} aria-hidden>
@@ -89,6 +175,7 @@ export default function LandingPage() {
             <SectionTag>Vitres Teintées · Covering · Detailing · 67400</SectionTag>
           </div>
           <h1 className={`clash ${styles.heroTitle}`}>
+            <span className="sr-only">Vitres teintées à Strasbourg — Tay Performance. </span>
             <span className={styles.heroLine}>
               <span data-reveal data-delay="90" style={{ display: 'inline-block' }}>
                 L'obscurité,
@@ -122,7 +209,7 @@ export default function LandingPage() {
         <div data-reveal className={styles.statBand}>
           <div className={styles.stat}>
             <div className={`mono ${styles.statValue}`}>
-              <CountUp target={1200} suffix="+" />
+              <CountUp target={3000} suffix="+" />
             </div>
             <div className={styles.statLabel}>Véhicules traités</div>
           </div>
@@ -180,29 +267,7 @@ export default function LandingPage() {
               Tout voir →
             </Link>
           </div>
-          <div className={styles.servicesGrid}>
-            <article className={`card card--amber ${styles.serviceHero}`} data-reveal>
-              <img src={visuel6} alt="Pose de film teinté" className={styles.serviceHeroImg} />
-              <div className={styles.serviceHeroShade} />
-              <div className={styles.serviceHeroBody}>
-                <span className={`mono ${styles.featuredChip}`}>PRESTATION PHARE</span>
-                <h3 className="sat">Vitres teintées sur-mesure</h3>
-                <p>
-                  Films découpés au véhicule, pose intérieure sans bulle, teintes de 5% à 85% VLT. Avant, arrière,
-                  lunette, bande pare-soleil.
-                </p>
-              </div>
-            </article>
-            {SERVICES.map((svc, i) => (
-              <article key={svc.id} className={`card card--${svc.tone} ${styles.serviceCard}`} data-reveal data-delay={80 * (i + 1)}>
-                <div className={`mono ${styles.serviceNum}`} style={{ color: svc.tone === 'blue' ? 'var(--brand-blue)' : svc.tone === 'red' ? 'var(--brand-red)' : 'var(--octane-500)' }}>
-                  {svc.id}
-                </div>
-                <h3 className="sat">{svc.title}</h3>
-                <p>{svc.body}</p>
-              </article>
-            ))}
-          </div>
+          <ServicesSlider />
         </div>
       </section>
 
@@ -259,19 +324,20 @@ export default function LandingPage() {
             <div>
               <span className={styles.legalTag}>Conformité garantie</span>
               <h2 className={`sat ${styles.legalTitle}`}>
+                <span className="sr-only">Vitres teintées légales en France : </span>
                 On vous pose la teinte légale,
                 <br />
                 pas une amende.
               </h2>
               <p className={styles.legalBody}>
-                Notre configurateur applique la réglementation française 2026 en direct : minimum 70% VLT à l'avant,
+                Notre configurateur applique la réglementation française 2026 en direct : minimum 70% TLV à l'avant,
                 arrière libre. Vous voyez tout de suite ce qui est autorisé.
               </p>
             </div>
             <div className={styles.legalGrid}>
               <div className={styles.legalStat}>
                 <div className="mono" style={{ color: 'var(--status-success)' }}>≥70%</div>
-                <span>VLT mini à l'avant</span>
+                <span>TLV mini à l'avant</span>
               </div>
               <div className={styles.legalStat}>
                 <div className="mono" style={{ color: 'var(--brand-blue)' }}>Libre</div>
@@ -298,6 +364,7 @@ export default function LandingPage() {
             Prêt à teinter
             <br />
             votre véhicule&nbsp;?
+            <span className="sr-only"> Vitres teintées à {SERVICE_AREA.slice(0, 5).join(', ')}.</span>
           </h2>
           <p className={styles.ctaLede}>Devis transparent en moins de 3 minutes. Créneau confirmé en direct.</p>
           <Link to="/reserver" className="cta" style={{ fontSize: 17, padding: '19px 38px', marginTop: 34, animation: 'tp-pulse 2.8s ease-in-out infinite' }}>
@@ -307,6 +374,101 @@ export default function LandingPage() {
       </section>
 
       <SiteFooter />
+    </div>
+  )
+}
+
+
+/* ---------- services slider (scroll-snap, arrows + dots, swipe on mobile) ---------- */
+function ServicesSlider() {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const onScroll = () => {
+      const slides = Array.from(track.children) as HTMLElement[]
+      const left = track.scrollLeft
+      let best = 0
+      let bestDist = Infinity
+      slides.forEach((el, i) => {
+        const d = Math.abs(el.offsetLeft - track.offsetLeft - left)
+        if (d < bestDist) {
+          bestDist = d
+          best = i
+        }
+      })
+      setActive(best)
+    }
+    track.addEventListener('scroll', onScroll, { passive: true })
+    return () => track.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const goTo = (i: number) => {
+    const track = trackRef.current
+    if (!track) return
+    const el = track.children[Math.max(0, Math.min(SERVICES.length - 1, i))] as HTMLElement | undefined
+    if (el) track.scrollTo({ left: el.offsetLeft - track.offsetLeft, behavior: 'smooth' })
+  }
+
+  const toneColor = (tone: string) =>
+    tone === 'blue' ? 'var(--brand-blue)' : tone === 'red' ? 'var(--brand-red)' : 'var(--octane-500)'
+
+  return (
+    <div className={styles.servicesSlider}>
+      <div ref={trackRef} className={styles.servicesTrack} role="region" aria-label="Nos prestations" aria-roledescription="carrousel">
+        {SERVICES.map((svc, i) => (
+          <article
+            key={svc.id}
+            className={`card card--${svc.tone} ${styles.serviceSlide} ${'featured' in svc && svc.featured ? styles.serviceSlideFeatured : ''}`}
+            data-reveal
+            data-delay={60 * i}
+            aria-roledescription="diapositive"
+            aria-label={`${i + 1} sur ${SERVICES.length} — ${svc.title}`}
+          >
+            <img src={svc.img} alt="" className={styles.serviceSlideImg} loading="lazy" />
+            <div className={styles.serviceSlideShade} />
+            <div className={styles.serviceSlideBody}>
+              {'featured' in svc && svc.featured ? (
+                <span className={`mono ${styles.featuredChip}`}>PRESTATION PHARE</span>
+              ) : (
+                <div className={`mono ${styles.serviceNum}`} style={{ color: toneColor(svc.tone) }}>
+                  {svc.id}
+                </div>
+              )}
+              <h3 className="sat">{svc.title}</h3>
+              <p>{svc.body}</p>
+              <Link to={svc.cta.to} className={`navlink ${styles.serviceSlideLink}`}>
+                {svc.cta.label}
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className={styles.sliderNav}>
+        <div className={styles.sliderDots} role="tablist" aria-label="Aller à une prestation">
+          {SERVICES.map((svc, i) => (
+            <button
+              key={svc.id}
+              type="button"
+              role="tab"
+              aria-selected={active === i}
+              aria-label={svc.title}
+              className={`${styles.sliderDot} ${active === i ? styles.sliderDotOn : ''}`}
+              onClick={() => goTo(i)}
+            />
+          ))}
+        </div>
+        <div className={styles.sliderArrows}>
+          <button type="button" className={styles.sliderArrow} aria-label="Prestation précédente" disabled={active === 0} onClick={() => goTo(active - 1)}>
+            ←
+          </button>
+          <button type="button" className={styles.sliderArrow} aria-label="Prestation suivante" disabled={active >= SERVICES.length - 1} onClick={() => goTo(active + 1)}>
+            →
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -2,9 +2,8 @@ import { Link } from 'react-router-dom'
 import logo from '../../assets/logo.svg'
 import { SOCIAL_LINKS } from '../../features/landing/SocialSection'
 import { WORKSHOP } from '../../features/info/AddressPage'
+import { DEVELOPER, SERVICE_AREA, portfolioUrl } from '../../lib/site'
 import styles from './layout.module.css'
-
-const PORTFOLIO_URL = 'https://amirazdoyev.framer.website/'
 
 export default function SiteFooter() {
   return (
@@ -14,6 +13,9 @@ export default function SiteFooter() {
           <img src={logo} alt="Tay Performance" style={{ height: 40, width: 'auto', marginBottom: 18 }} />
           <p>
             Atelier de personnalisation automobile. Vitres teintées, covering, detailing — Strasbourg / Illkirch.
+          </p>
+          <p className={styles.footerArea}>
+            Pose de vitres teintées à {SERVICE_AREA.slice(0, -1).join(', ')} et dans tout le {SERVICE_AREA[SERVICE_AREA.length - 1]}.
           </p>
         </div>
         <div className={styles.footerCols}>
@@ -44,10 +46,20 @@ export default function SiteFooter() {
       <div className={styles.footerLegal}>
         <span>© 2026 Tay Performance. Tous droits réservés.</span>
         <span>Conforme réglementation vitres teintées · France 2026</span>
-        <span>
-          Site créé par{' '}
-          <a href={PORTFOLIO_URL} target="_blank" rel="noreferrer" className="navlink" title="Portfolio d'Amir EI">
-            Amir EI
+        <span className={styles.footerCredit}>
+          Site conçu &amp; développé par{' '}
+          <a
+            href={portfolioUrl('footer')}
+            target="_blank"
+            rel="noreferrer author"
+            className="navlink"
+            title={`${DEVELOPER.name} — ${DEVELOPER.role}`}
+          >
+            {DEVELOPER.name}
+          </a>
+          <span className={styles.footerCreditSep} aria-hidden>·</span>
+          <a href={portfolioUrl('footer', true)} target="_blank" rel="noreferrer" className="navlink">
+            Un site comme celui-ci&nbsp;?
           </a>
         </span>
       </div>

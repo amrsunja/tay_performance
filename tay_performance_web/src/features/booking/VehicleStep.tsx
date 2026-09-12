@@ -105,7 +105,7 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
 
   /** Common resolution path (search hit or funnel): known variant → direct; else ensure_variant. */
   const pick = async (
-    hit: { make: string; model: string; generation: string; yearStart: number | null; yearEnd: number | null; generationId: string },
+    hit: { make: string; model: string; generation: string; yearStart: number | null; yearEnd: number | null; generationId: string; modelId?: string },
     body: BodyStyleCode,
     known?: { id: string; baseLaborMinutes: number; labelFr: string },
   ) => {
@@ -301,6 +301,7 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
                         yearStart: generation.yearStart,
                         yearEnd: generation.yearEnd,
                         generationId: generation.id,
+                        modelId: model.id,
                       },
                       body,
                       known,

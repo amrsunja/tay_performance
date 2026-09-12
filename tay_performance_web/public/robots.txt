@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /garage
+Disallow: /reservations
+Disallow: /profil
+Disallow: /connexion
+
+Sitemap: https://www.tay-performance.fr/sitemap.xml

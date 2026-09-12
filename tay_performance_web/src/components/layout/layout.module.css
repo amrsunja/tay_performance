@@ -149,6 +149,23 @@
   color: var(--text-ghost);
 }
 
+.footerArea {
+  font-size: 12px;
+  color: var(--text-ghost);
+  margin-top: 10px;
+}
+
+.footerCredit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.footerCreditSep {
+  opacity: 0.5;
+}
+
 @media (max-width: 900px) {
   .header {
     padding: 12px 18px;

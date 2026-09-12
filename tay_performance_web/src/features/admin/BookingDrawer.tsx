@@ -203,8 +203,8 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                     <span aria-hidden>⚠</span> Hors conformité (ack client)
                   </span>
                 )}
-                <span className="mono" style={{ marginLeft: 'auto', fontSize: 17, color: 'var(--text-hi)' }}>
-                  {formatEuro(b.priceTotal)}
+                <span className="mono" style={{ marginLeft: 'auto', fontSize: 17, color: b.priceTotal == null ? 'var(--octane-300)' : 'var(--text-hi)' }}>
+                  {b.priceTotal == null ? 'Prix à fixer' : formatEuro(b.priceTotal)}
                 </span>
                 {b.priceOverridden && (
                   <span className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--octane-300)' }}>prix modifié par l'atelier</span>
@@ -266,7 +266,9 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <span>
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>PRIX </span>
-                    <span className="mono" style={{ fontSize: 16, color: 'var(--text)' }}>{formatEuro(b.priceTotal)}</span>
+                    <span className="mono" style={{ fontSize: 16, color: b.priceTotal == null ? 'var(--octane-300)' : 'var(--text)' }}>
+                      {b.priceTotal == null ? 'sur devis — à fixer après analyse' : formatEuro(b.priceTotal)}
+                    </span>
                     {b.priceOverridden && (
                       <span className="mono" style={{ fontSize: 11, color: 'var(--octane-300)', marginLeft: 8 }}>modifié</span>
                     )}
@@ -277,11 +279,11 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                       className="ghost"
                       style={{ fontSize: 12, padding: '7px 12px', borderRadius: 9 }}
                       onClick={() => {
-                        setPriceInput(b.priceTotal.toFixed(2))
+                        setPriceInput(b.priceTotal == null ? '' : b.priceTotal.toFixed(2))
                         setEditingPrice(true)
                       }}
                     >
-                      Modifier le prix
+                      {b.priceTotal == null ? 'Fixer le prix' : 'Modifier le prix'}
                     </button>
                   )}
                 </div>
@@ -316,7 +318,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                       disabled={!priceOk || priceMutation.isPending || parsedPrice === b.priceTotal}
                       onClick={() => priceMutation.mutate()}
                     >
-                      {priceMutation.isPending ? 'Enregistrement…' : 'Appliquer le nouveau prix'}
+                      {priceMutation.isPending ? 'Enregistrement…' : b.priceTotal == null ? 'Fixer le prix (visible par le client)' : 'Appliquer le nouveau prix'}
                     </button>
                     <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setEditingPrice(false)}>
                       Annuler

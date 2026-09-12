@@ -44,11 +44,11 @@ export function totals(rows: FinanceBookingRow[]): Totals {
   const t: Totals = { earned: 0, upcoming: 0, pipeline: 0, lost: 0, excluded: 0, count: { earned: 0, upcoming: 0, pipeline: 0, lost: 0 } }
   for (const r of rows) {
     if (r.revenueExcluded) {
-      t.excluded += r.priceTotal
+      t.excluded += (r.priceTotal ?? 0)
       continue
     }
     const b = bucketOf(r.status)
-    t[b] += r.priceTotal
+    t[b] += (r.priceTotal ?? 0)
     t.count[b] += 1
   }
   return t
@@ -84,7 +84,7 @@ export function byMonth(rows: FinanceBookingRow[], months: string[]): Series[] {
   for (const r of rows) {
     if (r.revenueExcluded) continue
     const s = map.get(monthKey(r.slotStart))
-    if (s) s[bucketOf(r.status)] += r.priceTotal
+    if (s) s[bucketOf(r.status)] += (r.priceTotal ?? 0)
   }
   return [...map.values()]
 }
@@ -102,7 +102,7 @@ export function byDay(rows: FinanceBookingRow[], month: string): Series[] {
   for (const r of rows) {
     if (r.revenueExcluded || !r.slotStart.startsWith(month)) continue
     const d = Number(r.slotStart.slice(8, 10)) - 1
-    if (out[d]) out[d][bucketOf(r.status)] += r.priceTotal
+    if (out[d]) out[d][bucketOf(r.status)] += (r.priceTotal ?? 0)
   }
   return out
 }
@@ -119,7 +119,7 @@ export function byZone(rows: FinanceBookingRow[], labels: Partial<Record<TintZon
   const map = new Map<string, Share>()
   for (const r of rows) {
     if (r.revenueExcluded || bucketOf(r.status) !== 'earned' || r.zones.length === 0) continue
-    const part = r.priceTotal / r.zones.length
+    const part = (r.priceTotal ?? 0) / r.zones.length
     for (const z of r.zones) {
       const s = map.get(z) ?? { key: z, label: labels[z] ?? z, amount: 0, count: 0 }
       s.amount += part
@@ -135,7 +135,7 @@ export function byBodyStyle(rows: FinanceBookingRow[]): Share[] {
   for (const r of rows) {
     if (r.revenueExcluded || bucketOf(r.status) !== 'earned') continue
     const s = map.get(r.bodyStyle) ?? { key: r.bodyStyle, label: r.bodyLabel || r.bodyStyle, amount: 0, count: 0 }
-    s.amount += r.priceTotal
+    s.amount += (r.priceTotal ?? 0)
     s.count += 1
     map.set(r.bodyStyle, s)
   }
@@ -159,20 +159,20 @@ export function clientInsights(rows: FinanceBookingRow[]): ClientInsights {
   for (const r of earnedRows) {
     const k = r.userId ?? `anon:${r.contactName.toLowerCase()}`
     const c = perClient.get(k) ?? { name: r.contactName, amount: 0, count: 0, userId: r.userId }
-    c.amount += r.priceTotal
+    c.amount += (r.priceTotal ?? 0)
     c.count += 1
     perClient.set(k, c)
   }
   const clients = [...perClient.values()]
   const returning = clients.filter((c) => c.count > 1).length
   return {
-    averageTicket: earnedRows.length ? earnedRows.reduce((s, r) => s + r.priceTotal, 0) / earnedRows.length : 0,
+    averageTicket: earnedRows.length ? earnedRows.reduce((s, r) => s + (r.priceTotal ?? 0), 0) / earnedRows.length : 0,
     newClients: clients.length - returning,
     returningClients: returning,
     returningShare: clients.length ? returning / clients.length : 0,
     top: clients.sort((a, b) => b.amount - a.amount).slice(0, 5),
     noShowCount: rows.filter((r) => r.status === 'no_show').length,
     cancelledCount: rows.filter((r) => r.status === 'cancelled').length,
-    lostAmount: rows.filter((r) => !r.revenueExcluded && bucketOf(r.status) === 'lost').reduce((s, r) => s + r.priceTotal, 0),
+    lostAmount: rows.filter((r) => !r.revenueExcluded && bucketOf(r.status) === 'lost').reduce((s, r) => s + (r.priceTotal ?? 0), 0),
   }
 }

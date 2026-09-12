@@ -10,7 +10,7 @@ import { listFinanceBookings, setRevenueExcluded, type FinanceBookingRow } from 
 import { getCatalog } from '../../api/catalog'
 import { errorMessage } from '../../lib/supabase'
 import type { TintZoneCode } from '../../types/domain'
-import { formatEuro } from '../booking/useBookingDraft'
+import { formatEuro, formatPrice } from '../booking/useBookingDraft'
 import { BUCKET_META, bucketOf, byBodyStyle, byDay, byMonth, byZone, clientInsights, lastMonths, totals, type Bucket } from './finance'
 import { CumulativeLine, Legend, ShareBars, StackedBars } from './Charts'
 import styles from './admin.module.css'
@@ -64,7 +64,7 @@ export default function TransactionsPage() {
     [catalog.data],
   )
 
-  const data = rows.data ?? []
+  const data = useMemo(() => rows.data ?? [], [rows.data])
   const t = useMemo(() => totals(data), [data])
   const months = useMemo(() => lastMonths(range === '30d' || range === 'month' ? 6 : 12), [range])
   const monthly = useMemo(() => byMonth(data, months), [data, months])
@@ -268,7 +268,7 @@ export default function TransactionsPage() {
                   </td>
                   <td className={`mono ${styles.tdNum}`} style={{ whiteSpace: 'nowrap' }}>
                     <span style={{ color: r.revenueExcluded ? 'var(--text-faint)' : BUCKET_META[b].color, textDecoration: r.revenueExcluded ? 'line-through' : undefined }}>
-                      {formatEuro(r.priceTotal)}
+                      {formatPrice(r.priceTotal)}
                     </span>
                     {r.priceOverridden && <span title="prix modifié" style={{ color: 'var(--octane-300)', marginLeft: 4 }}>*</span>}
                     {r.revenueExcluded && (
@@ -330,7 +330,7 @@ function ExcludeModal({ row, pending, onClose, onConfirm }: { row: FinanceBookin
       <div style={{ display: 'grid', gap: 12 }}>
         <p style={{ margin: 0, fontSize: 14, color: 'var(--text-soft)' }}>
           <span className="mono" style={{ color: 'var(--octane-300)' }}>{row.reference}</span> · {row.contactName} ·{' '}
-          <span className="mono">{formatEuro(row.priceTotal)}</span>
+          <span className="mono">{formatPrice(row.priceTotal)}</span>
         </p>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-dim)' }}>
           La réservation et son statut ne changent pas ; le montant n'est simplement plus compté. Le client voit la mention dans son historique.

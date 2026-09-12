@@ -16,10 +16,11 @@ export const STATUS_LABEL: Record<BookingStatus, string> = Object.fromEntries(
 const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' })
 
 /** `price|<old>|<new>|<reason>` history notes (admin_set_booking_price) */
-export function parsePriceNote(note?: string | null): { from: number; to: number; reason: string } | null {
+export function parsePriceNote(note?: string | null): { from: number | null; to: number; reason: string } | null {
   if (!note?.startsWith('price|')) return null
   const [, from, to, ...rest] = note.split('|')
-  return { from: Number(from), to: Number(to), reason: rest.join('|') }
+  // from = '' when the booking was "sur devis" (no price yet)
+  return { from: from === '' ? null : Number(from), to: Number(to), reason: rest.join('|') }
 }
 
 /** Human sentence for a status-history row (what happened, in French). */
@@ -27,7 +28,9 @@ export function describeTransition(from: BookingStatus | null, to: BookingStatus
   const n = note ?? ''
   const price = parsePriceNote(n)
   if (price) {
-    return `Prix modifié par l'atelier : ${euro.format(price.from)} → ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
+    return price.from == null
+      ? `Prix fixé par l'atelier : ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
+      : `Prix modifié par l'atelier : ${euro.format(price.from)} → ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
   }
   if (n.startsWith('revenue|')) {
     const [, kind, ...rest] = n.split('|')

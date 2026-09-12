@@ -2,18 +2,148 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Tay Performance — Pose professionnelle de films teintés sur-mesure à Illkirch-Graffenstaden. Vitres teintées, covering, detailing." />
-    <title>Tay Performance — Vitres Teintées · Strasbourg</title>
+
+    <!-- ===== Primary SEO (overridden per route by src/lib/seo.ts) ===== -->
+    <title>Vitres Teintées Strasbourg · Tay Performance — Film teinté, Covering, Detailing (Illkirch 67400)</title>
+    <meta name="description" content="Tay Performance — pose professionnelle de vitres teintées sur-mesure à Strasbourg (Illkirch-Graffenstaden, 67400). Films teintés 5 % à 70 % TLV, covering, sellerie, detailing, éclairage intérieur. Réservation en ligne, conformité réglementation française, garantie." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <link rel="canonical" href="https://www.tay-performance.fr/" />
+    <meta name="author" content="Amir Azdoyev — https://amirazdoyev.framer.website/" />
+    <link rel="author" type="text/plain" href="/humans.txt" />
+    <meta name="theme-color" content="#0b0f14" />
+
+    <!-- Local business geo hints -->
+    <meta name="geo.region" content="FR-67" />
+    <meta name="geo.placename" content="Illkirch-Graffenstaden, Strasbourg" />
+    <meta name="geo.position" content="48.5295;7.7255" />
+    <meta name="ICBM" content="48.5295, 7.7255" />
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tay Performance" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="Vitres Teintées Strasbourg · Tay Performance" />
+    <meta property="og:description" content="Pose professionnelle de films teintés sur-mesure à Strasbourg / Illkirch. Réservation en ligne, conformité légale, garantie." />
+    <meta property="og:url" content="https://www.tay-performance.fr/" />
+    <meta property="og:image" content="https://www.tay-performance.fr/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Pose de vitres teintées à l'atelier Tay Performance, Illkirch-Graffenstaden" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Vitres Teintées Strasbourg · Tay Performance" />
+    <meta name="twitter:description" content="Pose professionnelle de films teintés sur-mesure à Strasbourg / Illkirch. Réservation en ligne." />
+    <meta name="twitter:image" content="https://www.tay-performance.fr/og.jpg" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- ===== Structured data (Google rich results / knowledge panel) ===== -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": ["AutoRepair", "LocalBusiness"],
+          "@id": "https://www.tay-performance.fr/#business",
+          "name": "Tay Performance",
+          "alternateName": ["Tay Performance Strasbourg", "Tay Performance Illkirch"],
+          "description": "Atelier de personnalisation automobile à Illkirch-Graffenstaden (Strasbourg) : pose de vitres teintées sur-mesure, covering, detailing.",
+          "url": "https://www.tay-performance.fr/",
+          "logo": "https://www.tay-performance.fr/icon-512.png",
+          "image": "https://www.tay-performance.fr/og.jpg",
+          "telephone": "+33605505028",
+          "priceRange": "€€",
+          "currenciesAccepted": "EUR",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "19 Rue de l'Industrie",
+            "addressLocality": "Illkirch-Graffenstaden",
+            "postalCode": "67400",
+            "addressRegion": "Grand Est",
+            "addressCountry": "FR"
+          },
+          "geo": { "@type": "GeoCoordinates", "latitude": 48.5295, "longitude": 7.7255 },
+          "hasMap": "https://www.google.com/maps/search/?api=1&query=Tay%20Performance%2C%2019%20Rue%20de%20l'industrie%2C%2067400%20Illkirch-Graffenstaden",
+          "areaServed": [
+            { "@type": "City", "name": "Strasbourg" },
+            { "@type": "City", "name": "Illkirch-Graffenstaden" },
+            { "@type": "City", "name": "Schiltigheim" },
+            { "@type": "City", "name": "Lingolsheim" },
+            { "@type": "City", "name": "Ostwald" },
+            { "@type": "AdministrativeArea", "name": "Bas-Rhin" }
+          ],
+          "openingHoursSpecification": [
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday"], "opens": "09:00", "closes": "18:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "09:00", "closes": "19:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "09:00", "closes": "16:00" }
+          ],
+          "sameAs": [
+            "https://www.instagram.com/tay_performance/",
+            "https://www.tiktok.com/@tay_performance",
+            "https://www.facebook.com/p/Tay-Performance-100086047330108/"
+          ],
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Prestations",
+            "itemListElement": [
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Vitres teintées sur-mesure", "description": "Films teintés découpés au véhicule, 5 % à 70 % TLV, pose intérieure sans bulle. Avant, arrière, lunette, pare-brise." } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Covering automobile", "description": "Habillage carrosserie total ou partiel." } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Sellerie", "description": "Rénovation et personnalisation de l'intérieur." } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Detailing", "description": "Rénovation et protection esthétique du véhicule." } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Éclairage intérieur", "description": "Ambiance LED sur-mesure de l'habitacle." } }
+            ]
+          },
+          "potentialAction": {
+            "@type": "ReserveAction",
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://www.tay-performance.fr/reserver", "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"] },
+            "result": { "@type": "Reservation", "name": "Rendez-vous vitres teintées" }
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.tay-performance.fr/#website",
+          "url": "https://www.tay-performance.fr/",
+          "name": "Tay Performance",
+          "inLanguage": "fr-FR",
+          "publisher": { "@id": "https://www.tay-performance.fr/#business" },
+          "author": { "@id": "https://amirazdoyev.framer.website/#person" }
+        },
+        {
+          "@type": "Person",
+          "@id": "https://amirazdoyev.framer.website/#person",
+          "name": "Amir Azdoyev",
+          "url": "https://amirazdoyev.framer.website/",
+          "jobTitle": "Développeur Flutter / React / Supabase",
+          "knowsAbout": ["Flutter", "Dart", "React", "TypeScript", "Supabase", "Firebase"]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Crawler / no-JS fallback — replaced by React on mount -->
+      <noscript>
+        <main style="font-family: system-ui, sans-serif; padding: 32px; max-width: 720px; margin: auto; color: #e6ebf0; background: #0b0f14">
+          <h1>Tay Performance — Vitres teintées à Strasbourg / Illkirch-Graffenstaden</h1>
+          <p>Pose professionnelle de films teintés sur-mesure (5 % à 70 % TLV), covering, sellerie, detailing et éclairage intérieur. Conformité réglementation française, garantie.</p>
+          <p>19 Rue de l'Industrie, 67400 Illkirch-Graffenstaden · Tél. 06 05 50 50 28</p>
+          <p><a href="/reserver" style="color:#29abe2">Réserver un créneau en ligne</a> · <a href="/adresse" style="color:#29abe2">Nous trouver</a></p>
+          <p>Ce site nécessite JavaScript pour la réservation en ligne.</p>
+        </main>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

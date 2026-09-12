@@ -1,15 +1,16 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import logo from '../../assets/logo.svg'
 import { useReveal } from '../../hooks/useReveal'
+import { useSeo } from '../../lib/seo'
 import { getCatalog } from '../../api/catalog'
 import { getMyBooking } from '../../api/bookings'
 import { getMyVehicles } from '../../api/garage'
 import { resolveVariant } from '../../api/taxonomy'
 import { releaseHold } from '../../api/availability'
 import type { TintZoneCode } from '../../types/domain'
-import { useBookingDraft, useLocalQuote, type BookingStep } from './useBookingDraft'
+import { nearestTlv, normalizeSelection, useBookingDraft, useLocalQuote, zonePrice, type BookingStep } from './useBookingDraft'
 import VehicleFunnel from './VehicleStep'
 import ConfigStep from './ConfigStep'
 import CalendarStep from './CalendarStep'
@@ -28,6 +29,12 @@ const FRONT_ZONES: TintZoneCode[] = ['pare_brise', 'front_sides']
 
 export default function BookingPage() {
   const { state, dispatch, quote } = useBookingPageState()
+  useSeo({
+    title: 'Réserver une pose de vitres teintées en ligne — Strasbourg / Illkirch',
+    description:
+      'Configurez votre véhicule, vos zones et votre teinte : prix et durée en direct, créneaux réels à l’atelier Tay Performance d’Illkirch-Graffenstaden. Réservation en ligne sans compte.',
+    path: '/reserver',
+  })
   useReveal([state.step])
 
   useEffect(() => {
@@ -93,7 +100,7 @@ export default function BookingPage() {
       )}
 
       {state.step === 'config' && state.vehicle && (
-        <ConfigStep state={state} dispatch={dispatch} quote={quote.local} zones={quote.zones} vehicle={state.vehicle} />
+        <ConfigStep state={state} dispatch={dispatch} quote={quote.local} zones={quote.zones} zonePrices={quote.zonePrices} vehicle={state.vehicle} />
       )}
       {state.step === 'calendar' && state.vehicle && (
         <CalendarStep state={state} dispatch={dispatch} quote={quote.local} vehicle={state.vehicle} />
@@ -143,7 +150,8 @@ function useBookingPageState() {
           if (!booking) return
           const resolved = await resolveVariant(booking.variantId)
           if (!resolved) return
-          const selected = booking.specs.map((s) => s.zone)
+          // legacy bookings may carry rear_window / panoramic_roof / 85 % — fold onto the v2 packs
+          const selected = normalizeSelection(booking.specs.map((s) => s.zone))
           const front = booking.specs.find((s) => FRONT_ZONES.includes(s.zone))
           const rear = booking.specs.find((s) => !FRONT_ZONES.includes(s.zone))
           dispatch({ type: 'setReschedule', bookingId: rescheduleId })
@@ -154,8 +162,8 @@ function useBookingPageState() {
           dispatch({
             type: 'hydrateSpecs',
             selected,
-            frontVlt: front?.vltPercent ?? 70,
-            rearVlt: rear?.vltPercent ?? 20,
+            frontVlt: nearestTlv(front?.vltPercent ?? 70),
+            rearVlt: nearestTlv(rear?.vltPercent ?? 20),
           })
           dispatch({ type: 'setVehicle', vehicle: resolved })
         } else if (vehicleId) {
@@ -172,5 +180,14 @@ function useBookingPageState() {
     })()
   }, [params, dispatch])
 
-  return { state, dispatch, quote: { local, zones: catalog.data?.zones ?? [] } }
+  const zonePrices = useMemo(() => {
+    const out: Partial<Record<TintZoneCode, number>> = {}
+    if (!catalog.data || !state.vehicle) return out
+    const rule = catalog.data.rules[state.vehicle.bodyStyle]
+    const override = state.vehicle.modelId ? catalog.data.modelOverrides[state.vehicle.modelId] : undefined
+    for (const z of catalog.data.zones) out[z.code] = zonePrice(z, rule, override).price
+    return out
+  }, [catalog.data, state.vehicle])
+
+  return { state, dispatch, quote: { local, zones: catalog.data?.zones ?? [], zonePrices } }
 }

@@ -895,3 +895,163 @@
     display: none; /* mobile: keep the hero clean + save bandwidth */
   }
 }
+
+/* ============ services slider ============ */
+.servicesSlider {
+  position: relative;
+}
+
+.servicesTrack {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 6px 2px 18px;
+  margin: 0 -2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.servicesTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.serviceSlide {
+  flex: 0 0 calc((100% - 40px) / 3);
+  scroll-snap-align: start;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.serviceSlideFeatured {
+  flex-basis: calc((100% - 20px) / 2);
+}
+
+.serviceSlideImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.42;
+  transition: transform 0.6s var(--ease), opacity 0.4s ease;
+}
+
+.serviceSlide:hover .serviceSlideImg {
+  transform: scale(1.04);
+  opacity: 0.55;
+}
+
+.serviceSlideShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(15, 19, 24, 0.98) 18%, rgba(15, 19, 24, 0.25) 70%);
+}
+
+.serviceSlideBody {
+  position: relative;
+  z-index: 5;
+  margin-top: auto;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.serviceSlideBody h3 {
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--text-hi);
+  margin: 0;
+}
+
+.serviceSlideFeatured .serviceSlideBody h3 {
+  font-size: 30px;
+}
+
+.serviceSlideBody p {
+  font-size: 14.5px;
+  line-height: 1.58;
+  color: var(--text-mut);
+  margin: 10px 0 0;
+  max-width: 400px;
+}
+
+.serviceSlideLink {
+  margin-top: 16px;
+  font-size: 13px;
+  align-self: flex-start;
+}
+
+.sliderNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.sliderDots {
+  display: flex;
+  gap: 8px;
+}
+
+.sliderDot {
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+  background: var(--border-subtle);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.25s ease, width 0.25s ease;
+}
+
+.sliderDotOn {
+  background: var(--octane-500);
+  width: 38px;
+}
+
+.sliderArrows {
+  display: flex;
+  gap: 8px;
+}
+
+.sliderArrow {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  color: var(--text-hi);
+  font-size: 18px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.sliderArrow:hover {
+  border-color: var(--octane-500);
+  background: var(--surface-2);
+}
+
+.sliderArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (max-width: 1024px) {
+  .serviceSlide,
+  .serviceSlideFeatured {
+    flex-basis: calc((100% - 20px) / 2);
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 640px) {
+  .serviceSlide,
+  .serviceSlideFeatured {
+    flex-basis: 86%;
+    min-height: 320px;
+  }
+}

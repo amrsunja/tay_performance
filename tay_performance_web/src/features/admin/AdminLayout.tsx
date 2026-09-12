@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { getCatalog } from '../../api/catalog'
 import NewBookingModal from './NewBookingModal'
 import styles from './admin.module.css'
+import { useSeo } from '../../lib/seo'
 
 const NAV = [
   { to: '/admin', label: 'File du jour', icon: '▤', end: true },
@@ -24,6 +25,7 @@ function todayLabel() {
 }
 
 export default function AdminLayout() {
+  useSeo({ title: 'Administration', noindex: true })
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const [creating, setCreating] = useState(false)

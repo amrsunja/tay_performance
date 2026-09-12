@@ -11,8 +11,9 @@ import { getCatalog } from '../../api/catalog'
 import { errorMessage, supabase } from '../../lib/supabase'
 import type { MyBookingRow } from '../../types/api'
 import type { BookingStatus } from '../../types/domain'
-import { formatDuration, formatEuro } from '../booking/useBookingDraft'
+import { formatDuration, formatEuro, formatPrice } from '../booking/useBookingDraft'
 import styles from './portal.module.css'
+import { useSeo } from '../../lib/seo'
 
 const TIMELINE: BookingStatus[] = ['requested', 'confirmed', 'in_progress', 'completed']
 const TIMELINE_LABELS: Record<string, string> = {
@@ -25,7 +26,7 @@ const TIMELINE_LABELS: Record<string, string> = {
 const ZONE_LABELS: Record<string, string> = {
   pare_brise: 'Pare-brise',
   front_sides: 'Vitres avant latérales',
-  rear_sides: 'Vitres arrière latérales',
+  rear_sides: 'Vitres arrière (3 vitres)',
   rear_window: 'Lunette arrière',
   panoramic_roof: 'Toit panoramique',
 }
@@ -121,13 +122,20 @@ function BookingCard({
         </div>
         <div className={styles.bookingHeadRight}>
           <StatusPill status={booking.status} />
-          <span className={`mono ${styles.bookingPrice}`}>{formatEuro(booking.priceTotal)}</span>
+          <span className={`mono ${styles.bookingPrice}`} style={booking.priceTotal == null ? { fontSize: 14, color: 'var(--octane-300)' } : undefined}>
+            {booking.priceTotal == null ? 'Prix à confirmer' : formatPrice(booking.priceTotal)}
+          </span>
+          {booking.priceTotal == null && (
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right', maxWidth: 220 }}>
+              l'atelier analyse votre véhicule et vous rappelle avec le prix
+            </span>
+          )}
           {booking.priceOverridden && lastPriceChange && (
             <span className="mono" style={{ fontSize: 11, color: 'var(--octane-300)', textAlign: 'right' }}>
               prix ajusté par l'atelier
               {(() => {
                 const pc = parsePriceNote(lastPriceChange.note)
-                return pc ? ` (avant : ${formatEuro(pc.from)}${pc.reason ? ` — ${pc.reason}` : ''})` : ''
+                return pc ? ` (avant : ${pc.from == null ? 'sur devis' : formatEuro(pc.from)}${pc.reason ? ` — ${pc.reason}` : ''})` : ''
               })()}
             </span>
           )}
@@ -142,7 +150,7 @@ function BookingCard({
             key={spec.zone}
             className={`chip ${FRONT_ZONES.includes(spec.zone) ? 'chip--front' : 'chip--rear'}`}
           >
-            {ZONE_LABELS[spec.zone] ?? spec.zone} · {spec.vltPercent}%
+            {ZONE_LABELS[spec.zone] ?? spec.zone} · TLV {spec.vltPercent}%
           </span>
         ))}
         {booking.warrantyYears && (
@@ -226,6 +234,7 @@ function BookingCard({
 }
 
 export default function BookingsPage() {
+  useSeo({ title: 'Mes réservations', noindex: true })
   useReveal()
   const { session } = useAuth()
   const queryClient = useQueryClient()

@@ -1,5 +1,6 @@
-/* Admin — vehicle catalog: search any vehicle, edit the "surcoût pose" (minutes) per body
-   style (defaults applied to every new variant) and per variant, save in one click. */
+/* Admin — vehicle catalog: search any vehicle, edit the pose time (minutes, avant + arrière)
+   per body style (defaults applied to every new variant) and per variant, save in one click.
+   The quote splits it 60 % arrière / 40 % avant (+ pare-brise fixed minutes) — see 0016. */
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Modal from '../../components/ui/Modal'
@@ -126,7 +127,7 @@ export default function VehiclesPage() {
             value={e?.minutes ?? String(row.minutes)}
             onChange={(ev) => editVariant(row.id, row, { minutes: ev.target.value.replace(/\D/g, '') })}
             style={{ width: 76, padding: '6px 8px', textAlign: 'right', borderColor: e ? 'var(--octane-500)' : undefined }}
-            aria-label="Surcoût pose en minutes"
+            aria-label="Durée de pose en minutes"
           />
         </td>
         <td>
@@ -148,8 +149,9 @@ export default function VehiclesPage() {
       <div className={styles.pageHead}>
         <h1 className={`sat ${styles.pageTitle}`}>Catalogue véhicules</h1>
         <p className={styles.pageSub}>
-          {makes.data?.length ?? '…'} marques · recherchez n'importe quel véhicule, ajustez le{' '}
-          <span className="mono">surcoût (min)</span> par carrosserie ou par variante, puis <strong>Enregistrer</strong>.
+          {makes.data?.length ?? '…'} marques · recherchez n'importe quel véhicule, ajustez la{' '}
+          <span className="mono">durée de pose (min)</span> par carrosserie ou par variante, puis <strong>Enregistrer</strong>.
+          Le devis répartit ce temps 60 % arrière / 40 % avant (+ 40 min pare-brise).
         </p>
       </div>
 
@@ -161,7 +163,7 @@ export default function VehiclesPage() {
 
       {/* ---------- body-style defaults ---------- */}
       <div className={styles.blockHead}>
-        <h2 className={`sat ${styles.blockTitle}`}>Surcoût par défaut par carrosserie</h2>
+        <h2 className={`sat ${styles.blockTitle}`}>Durée de pose par carrosserie</h2>
         <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
           appliqué à chaque nouvelle variante (recherche client / import)
         </span>
@@ -179,7 +181,7 @@ export default function VehiclesPage() {
                   value={edited ?? String(b.defaultLaborMinutes)}
                   onChange={(e) => setBodyEdits((m) => ({ ...m, [b.code]: e.target.value.replace(/\D/g, '') }))}
                   style={{ width: 72, padding: '6px 8px', textAlign: 'right', borderColor: edited !== undefined ? 'var(--octane-500)' : undefined }}
-                  aria-label={`Surcoût ${b.labelFr}`}
+                  aria-label={`Durée de pose ${b.labelFr}`}
                 />
                 <span className={`mono ${styles.makeCount}`}>min</span>
               </span>
@@ -250,7 +252,7 @@ export default function VehiclesPage() {
             <tr>
               <th>Véhicule</th>
               <th>Carrosserie</th>
-              <th className={styles.thNum}>Surcoût (min)</th>
+              <th className={styles.thNum}>Pose (min)</th>
               <th>Note</th>
               <th>État</th>
             </tr>
@@ -312,7 +314,7 @@ export default function VehiclesPage() {
                   </span>
                 </td>
                 <td colSpan={4} className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                  aucune carrosserie référencée — créée au premier choix client (surcoût par défaut)
+                  aucune carrosserie référencée — créée au premier choix client (durée par défaut)
                 </td>
               </tr>
             ))}

@@ -1,0 +1,19 @@
+/* TEAM */
+  Developer: Amir Azdoyev
+  Role: Design, front-end (React / TypeScript), back-end (Supabase / PostgreSQL)
+  Site: https://amirazdoyev.framer.website/
+  Contact: https://amirazdoyev.framer.website/#contact
+  Stack expertise: Flutter, Dart, React, Supabase, Firebase
+
+  Client: Tay Performance — vitres teintées, covering, detailing
+  Location: Illkirch-Graffenstaden (Strasbourg), France
+
+/* SITE */
+  Language: Français
+  Standards: HTML5, CSS3, TypeScript
+  Components: React 19, React Router 7, TanStack Query, Vite
+  Backend: Supabase (Postgres, RLS, Edge Functions), Resend
+
+/* NOTE */
+  Vous aimez ce site et souhaitez le même système de réservation pour votre activité ?
+  → https://amirazdoyev.framer.website/#contact

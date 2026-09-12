@@ -29,7 +29,7 @@ type BookingRow = {
   slot_end: string;
   duration_min: number;
   status: string;
-  price_total: number;
+  price_total: number | null; // null = sur devis (utilitaire / pick-up), fixé par l'atelier après analyse
   contact_name: string;
   contact_email: string | null;
   legal_flag: string;
@@ -80,7 +80,7 @@ function recapHtml(b: BookingRow, address: string): string {
     <tr><td style="padding:4px 12px 4px 0;color:#666">Date</td><td>${dateFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Heure</td><td>${timeFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Durée estimée</td><td>~${b.duration_min} min</td></tr>
-    <tr><td style="padding:4px 12px 4px 0;color:#666">Total (règlement à l'atelier)</td><td><b>${Number(b.price_total).toFixed(2)} €</b></td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#666">${b.price_total == null ? "Prix" : "Total (règlement à l'atelier)"}</td><td><b>${b.price_total == null ? "communiqué par l'atelier après analyse de votre véhicule" : `${Number(b.price_total).toFixed(2)} €`}</b></td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Adresse</td><td>${address}</td></tr>
   </table>`;
 }

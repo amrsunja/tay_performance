@@ -28,14 +28,14 @@ interface TintBlueprintProps {
   vehicleYears?: string
 }
 
-/** VLT 85 (clair) → 0 opacity · VLT 5 (foncé) → ~1 opacity */
+/** TLV 70 (clair) → light film · TLV 5 (très foncé) → ~1 opacity */
 export function opacityForVlt(vlt: number): number {
-  return Math.max(0, Math.min(1, (85 - vlt) / 80))
+  return Math.max(0, Math.min(1, 0.18 + ((70 - vlt) / 65) * 0.82))
 }
 
 /**
  * Plan de pose — layered live preview over the base vehicle photo.
- * Each layer's opacity is driven by its zone's selection + the group VLT slider.
+ * Each layer's opacity is driven by its zone's selection + the group TLV level.
  */
 export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabel, vehicleYears }: TintBlueprintProps) {
   const frontOn = selected.some((code) => FRONT_ZONES.includes(code as TintZoneCode))
@@ -101,7 +101,7 @@ export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabe
           <span className={styles.bpLegendDot} style={{ background: 'var(--brand-blue)' }} />
           <span className={`mono ${styles.bpLegendText}`}>Teinte arrière (live)</span>
         </span>
-        <span className={`mono ${styles.bpLegendHint}`}>Aperçu réel — glissez les curseurs d'opacité</span>
+        <span className={`mono ${styles.bpLegendHint}`}>Aperçu réel — choisissez le niveau de teinte (TLV)</span>
       </div>
     </div>
   )

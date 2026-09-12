@@ -31,19 +31,18 @@ select set_config('test.day', (
 ), false);
 
 -- ---------------------------------------------------------------
--- T1 — quote math (docs 02 §8): berline, rear_sides 20 + rear_window 20
---       15 + 35 + 30 = 80 min → snap 90 · labor 90×0.40 = 36
---       total = 240 + (70+50=120) + 36 + 30 (limo) = 426.00
+-- T1 — quote math (pricing v2, 0016): berline, pack arrière (rear_sides) 20%
+--       pose berline 120 min × 60 % = 72 → snap 90 · price = rear_price 170 (TLV-independent)
 -- ---------------------------------------------------------------
 do $$
 declare q jsonb;
 begin
   q := public._compute_quote(current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_sides","vlt_percent":20},{"zone_code":"rear_window","vlt_percent":20}]');
+    '[{"zone_code":"rear_sides","vlt_percent":20}]');
   if (q->>'duration_min')::int <> 90 then
     raise exception 'T1 duration: got %', q->>'duration_min';
   end if;
-  if (q->'breakdown'->>'total')::numeric <> 426.00 then
+  if (q->'breakdown'->>'total')::numeric <> 170.00 then
     raise exception 'T1 total: got %', q->'breakdown'->>'total';
   end if;
   if not (q->>'compliant')::boolean then
@@ -51,16 +50,15 @@ begin
   end if;
 end $$;
 
--- T2 — front zone below 70 ⇒ non-compliant, no limo at 50%
+-- T2 — front zone below 70 ⇒ non-compliant · front_price 80 · 120×40 % = 48 → 60 min
 do $$
 declare q jsonb;
 begin
   q := public._compute_quote(current_setting('test.variant_id')::uuid,
     '[{"zone_code":"front_sides","vlt_percent":50}]');
   if (q->>'compliant')::boolean then raise exception 'T2 should be non-compliant'; end if;
-  if (q->'breakdown'->>'limo_supplement')::numeric <> 0 then raise exception 'T2 limo should be 0'; end if;
-  -- 15+30=45 → 60 min · labor 24 · total 240+60+24 = 324
-  if (q->'breakdown'->>'total')::numeric <> 324.00 then
+  if (q->>'duration_min')::int <> 60 then raise exception 'T2 duration: got %', q->>'duration_min'; end if;
+  if (q->'breakdown'->>'total')::numeric <> 80.00 then
     raise exception 'T2 total: got %', q->'breakdown'->>'total';
   end if;
 end $$;
@@ -107,7 +105,7 @@ begin
   select id into hid from public.booking_holds limit 1;
   begin
     perform public.create_booking(hid, current_setting('test.variant_id')::uuid,
-      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      '[{"zone_code":"front_sides","vlt_percent":70}]',
       'Karim Test', '0612440931', null, null, false, null);
     raise exception 'T4 missing email accepted';
   exception when others then
@@ -136,11 +134,11 @@ declare hid uuid; b jsonb;
 begin
   select id into hid from public.booking_holds limit 1;
   b := public.create_booking(hid, current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_sides","vlt_percent":20},{"zone_code":"rear_window","vlt_percent":20}]',
+    '[{"zone_code":"rear_sides","vlt_percent":20}]',
     'Karim Test', '0612440931', 'karim@test.local', 'Le plus sombre possible.', false, null);
   if (b->>'status') <> 'requested' then raise exception 'T4 status %', b->>'status'; end if;
   if (b->>'reference') not like 'TP-%' then raise exception 'T4 reference %', b->>'reference'; end if;
-  if (b->>'price_total')::numeric <> 426.00 then raise exception 'T4 price %', b->>'price_total'; end if;
+  if (b->>'price_total')::numeric <> 170.00 then raise exception 'T4 price %', b->>'price_total'; end if;
 end $$;
 
 do $$
@@ -258,7 +256,7 @@ begin
   select slot_start into s from public._day_slots(current_setting('test.day')::date, 60, null)
     where state = 'available' order by slot_start desc limit 1;
   b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_window","vlt_percent":35}]',
+    '[{"zone_code":"front_sides","vlt_percent":70}]',
     s, 'Walk-in Client', '0700000000', null, null, 1, null, null);
   if (b->>'status') <> 'confirmed' then raise exception 'T6 admin booking status %', b->>'status'; end if;
 end $$;
@@ -270,7 +268,7 @@ begin
   select slot_start into s from public._day_slots(current_setting('test.day')::date + 2, 60, null)
     where state = 'available' order by slot_start desc limit 1;
   b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_window","vlt_percent":35}]',
+    '[{"zone_code":"front_sides","vlt_percent":70}]',
     s, 'Walk-in Remise', '0700000001', null, null, 1, null, null, 199.90);
   if (b->>'price_total')::numeric <> 199.90 or not (b->>'price_overridden')::boolean then
     raise exception 'T6b override not applied: %', b;
@@ -374,7 +372,7 @@ begin
     where state = 'available' order by slot_start limit 1;
   h := public.hold_slot(s, 60, 1);
   b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_window","vlt_percent":35}]',
+    '[{"zone_code":"front_sides","vlt_percent":70}]',
     'Sophie Test', '0768207745', 'sophie@test.local', null, false, null);
   perform public.cancel_booking_client((b->>'id')::uuid, 'changement de plan');
 end $$;
@@ -390,7 +388,7 @@ begin
     where state = 'available' order by slot_start limit 1;
   h := public.hold_slot(s, 60, 1);
   b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
-    '[{"zone_code":"rear_window","vlt_percent":35}]',
+    '[{"zone_code":"front_sides","vlt_percent":70}]',
     'Sophie Test', '0768207745', 'sophie@test.local', null, false, null);
   begin
     perform public.cancel_booking_client((b->>'id')::uuid, null);
@@ -420,7 +418,7 @@ begin
   end if;
   begin
     perform public.create_booking(hid, current_setting('test.variant_id')::uuid,
-      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      '[{"zone_code":"front_sides","vlt_percent":70}]',
       'Karim Test', '0612440931', 'karim@test.local', null, false, null);
     raise exception 'T8 create with released hold accepted';
   exception when others then
@@ -458,8 +456,8 @@ do $$
 declare d uuid; pub uuid;
 begin
   d := public.clone_pricing_version();
-  update public.zone_pricing set price_delta = 75.00
-    where version_id = d and zone_code = 'rear_sides' and vlt_percent = 20;
+  update public.pricing_rules set rear_price = 175.00
+    where version_id = d and body_style_code = 'berline_4p';
   perform public.publish_pricing(d);
   pub := public.current_pricing_version_id();
   if pub <> d then raise exception 'T9 publish did not switch versions'; end if;
@@ -471,12 +469,11 @@ set role authenticated;
 do $$
 declare n int; q jsonb;
 begin
-  select count(distinct version_id) into n from public.zone_pricing;
+  select count(distinct version_id) into n from public.pricing_rules;
   if n <> 1 then raise exception 'T9 client sees % pricing versions', n; end if;
   q := public.quote_booking(current_setting('test.variant_id')::uuid,
        '[{"zone_code":"rear_sides","vlt_percent":20}]');
-  -- 15+35=50 → 60 min · labor 24 · 240 + 75 + 24 + 30 = 369
-  if (q->'breakdown'->>'total')::numeric <> 369.00 then
+  if (q->'breakdown'->>'total')::numeric <> 175.00 then
     raise exception 'T9 new grid not applied: %', q->'breakdown'->>'total';
   end if;
 end $$;
@@ -536,7 +533,7 @@ begin
   update public.profiles set full_name = null, phone = null, email = null where id = auth.uid();
   begin
     perform public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
-      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      '[{"zone_code":"front_sides","vlt_percent":70}]',
       'Autre Personne', '+33698765432', 'autre@test.local', null, false, null,
       true, null, null, null);
     raise exception 'T11 for_other accepted without booker contact';
@@ -547,7 +544,7 @@ begin
   -- with the booker's own contact passed inline → OK
   select count(*) into n_before from public.vehicles where user_id = auth.uid();
   b := public.create_booking((h->>'hold_id')::uuid, current_setting('test.variant_id')::uuid,
-      '[{"zone_code":"rear_window","vlt_percent":35}]',
+      '[{"zone_code":"front_sides","vlt_percent":70}]',
       'Autre Personne', '+33698765432', 'autre@test.local', null, false, null,
       true, 'Booker B', '+33611111111', 'booker@test.local');
   if not (b->>'for_other')::boolean then raise exception 'T11 for_other flag missing'; end if;

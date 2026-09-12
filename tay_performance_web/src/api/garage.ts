@@ -15,13 +15,13 @@ interface VehicleSelectRow {
     body_style_code: string
     base_labor_minutes: number
     body_styles: { label_fr: string } | null
-    generations: { name: string; year_start: number; year_end: number | null; models: { name: string; makes: { name: string } | null } | null } | null
+    generations: { name: string; year_start: number; year_end: number | null; models: { id: string; name: string; makes: { name: string } | null } | null } | null
   } | null
 }
 
 const VEHICLE_SELECT = `id, variant_id, year, color, plate, nickname,
   vehicle_variants(body_style_code, base_labor_minutes, body_styles(label_fr),
-    generations(name, year_start, year_end, models(name, makes(name))))`
+    generations(name, year_start, year_end, models(id, name, makes(name))))`
 
 function mapVehicle(v: VehicleSelectRow): GarageVehicle {
   const chain = v.vehicle_variants
@@ -29,6 +29,7 @@ function mapVehicle(v: VehicleSelectRow): GarageVehicle {
   return {
     vehicleId: v.id,
     variantId: v.variant_id,
+    modelId: chain?.generations?.models?.id,
     baseLaborMinutes: Number(chain?.base_labor_minutes ?? 0),
     make: chain?.generations?.models?.makes?.name ?? '',
     model,

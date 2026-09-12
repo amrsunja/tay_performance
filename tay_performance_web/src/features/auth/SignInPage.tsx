@@ -19,10 +19,12 @@ import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
 import { formatPhoneDisplay } from '../../lib/phone'
 import styles from '../portal/portal.module.css'
+import { useSeo } from '../../lib/seo'
 
 type Step = 'phone' | 'code'
 
 export default function SignInPage() {
+  useSeo({ title: 'Connexion', noindex: true })
   const navigate = useNavigate()
   const { session, isAnonymous, loading } = useAuth()
   const [mode, setMode] = useState<'auto' | 'signin'>('auto')

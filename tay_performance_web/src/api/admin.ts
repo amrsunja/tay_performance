@@ -18,7 +18,7 @@ interface AdminBookingSelectRow {
   duration_min: number
   status: string
   legal_flag: string
-  price_total: number
+  price_total: number | null
   contact_name: string
   contact_phone: string
   contact_email: string | null
@@ -55,7 +55,7 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     durationMin: Number(b.duration_min),
     status: b.status as BookingStatus,
     legalFlag: b.legal_flag as LegalFlag,
-    priceTotal: Number(b.price_total),
+    priceTotal: b.price_total == null ? null : Number(b.price_total),
     contactName: b.contact_name,
     contactPhone: b.contact_phone,
     contactEmail: b.contact_email,
@@ -329,7 +329,7 @@ export interface FinanceBookingRow {
   slotStart: string
   createdAt: string
   status: BookingStatus
-  priceTotal: number
+  priceTotal: number | null
   priceOverridden: boolean
   revenueExcluded: boolean
   revenueExcludedReason: string | null
@@ -368,7 +368,7 @@ export async function listFinanceBookings(fromISO: string, toISO: string): Promi
       slotStart: b.slot_start as string,
       createdAt: b.created_at as string,
       status: b.status as BookingStatus,
-      priceTotal: Number(b.price_total),
+      priceTotal: b.price_total == null ? null : Number(b.price_total),
       priceOverridden: Boolean(b.price_overridden),
       revenueExcluded: Boolean(b.revenue_excluded),
       revenueExcludedReason: (b.revenue_excluded_reason as string | null) ?? null,

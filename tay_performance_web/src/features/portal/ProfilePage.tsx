@@ -14,8 +14,9 @@ import { isValidEmail } from '../../api/auth'
 import PhoneInput from '../../components/ui/PhoneInput'
 import { formatPhoneDisplay, normalizePhone } from '../../lib/phone'
 import { errorMessage } from '../../lib/supabase'
-import { formatEuro } from '../booking/useBookingDraft'
+import { formatPrice } from '../booking/useBookingDraft'
 import styles from './portal.module.css'
+import { useSeo } from '../../lib/seo'
 
 const dateFmt = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
@@ -32,6 +33,7 @@ const card: React.CSSProperties = {
 }
 
 export default function ProfilePage() {
+  useSeo({ title: 'Mon profil', noindex: true })
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { session, isAnonymous, loading, signOut } = useAuth()
@@ -252,7 +254,7 @@ export default function ProfilePage() {
                 </span>
               </span>
               <StatusPill status={b.status} />
-              <span className="mono" style={{ fontSize: 14 }}>{formatEuro(b.priceTotal)}</span>
+              <span className="mono" style={{ fontSize: 14 }}>{formatPrice(b.priceTotal)}</span>
             </div>
           ))}
           {!bookings.isPending && list.length === 0 && (

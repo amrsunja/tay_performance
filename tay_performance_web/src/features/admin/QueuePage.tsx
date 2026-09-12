@@ -5,6 +5,7 @@ import { advanceStatus, getBookingsBetween, onBookingsChange } from '../../api/a
 import { errorMessage } from '../../lib/supabase'
 import type { BookingStatus } from '../../types/domain'
 import { formatDuration } from '../booking/useBookingDraft'
+import { filterBookings } from '../../lib/phone'
 import BookingDrawer from './BookingDrawer'
 import styles from './admin.module.css'
 
@@ -33,6 +34,7 @@ export default function QueuePage() {
   const queryClient = useQueryClient()
   const [day, setDay] = useState(todayISO())
   const [openBooking, setOpenBooking] = useState<string | null>(null)
+  const [filter, setFilter] = useState('')
   const [error, setError] = useState('')
 
   const range = useMemo(() => {
@@ -60,7 +62,7 @@ export default function QueuePage() {
     onError: (e) => setError(errorMessage(e)),
   })
 
-  const rows = queue.data ?? []
+  const rows = useMemo(() => filterBookings(queue.data ?? [], filter), [queue.data, filter])
   const totalMinutes = rows.reduce((sum, q) => sum + q.durationMin, 0)
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
   const isToday = day === todayISO()
@@ -86,6 +88,15 @@ export default function QueuePage() {
             Aujourd'hui
           </button>
         )}
+        <input
+          className="field"
+          type="search"
+          placeholder="Filtrer : nom, téléphone, référence…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          style={{ maxWidth: 300 }}
+          aria-label="Filtrer les réservations du jour"
+        />
       </div>
 
       <div className={styles.statRow}>

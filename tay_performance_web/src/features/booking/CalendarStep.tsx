@@ -11,7 +11,7 @@ import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
 import type { ResolvedVehicle, SlotInfo } from '../../types/api'
 import { dayLabel, getMonth } from './calendar'
-import { formatDuration, formatEuro, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
+import { formatDuration, formatEuro, formatPrice, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
 import styles from './booking.module.css'
 
 interface StepProps {
@@ -253,7 +253,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                 <div key={line.zone.code} className={styles.summaryLine}>
                   <span>{line.zone.labelFr}</span>
                   <span className={`mono ${styles.summaryVlt}`}>
-                    {line.vlt}% · {formatEuro(line.price)}
+                    TLV {line.vlt}%{quote.onRequest ? '' : ` · ${formatEuro(line.price)}`}
                   </span>
                 </div>
               ))}
@@ -264,9 +264,9 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
               <span className="mono">{formatDuration(quote.minutes)}</span>
             </div>
             <div className={styles.summaryTotalRow}>
-              <span className={`sat ${styles.summaryTotalLabel}`}>Total</span>
-              <span className={`mono ${styles.summaryTotal}`} style={{ fontSize: 26 }}>
-                {formatEuro(quote.total)}
+              <span className={`sat ${styles.summaryTotalLabel}`}>{quote.onRequest ? 'Prix' : 'Total'}</span>
+              <span className={`mono ${styles.summaryTotal}`} style={{ fontSize: quote.onRequest ? 20 : 26 }}>
+                {formatPrice(quote.total)}
               </span>
             </div>
           </aside>

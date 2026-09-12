@@ -20,21 +20,35 @@ export interface CatalogZone {
   group: ZoneGroup
   isFront: boolean
   legallyRestricted: boolean
+  /** fixed minutes (pare-brise) */
   minutes: number
+  /** share of the body-style pose time (arrière 60 / avant 40) */
+  timeSharePct: number
   displayOrder: number
-  /** price delta per VLT stop (published grid) */
-  deltas: Record<number, number>
-  /** representative price shown in the zone row (delta at the lowest VLT ≥ 35, fallback any) */
-  price: number
 }
 
+/** Pack prices per body style (pricing v2 — TLV never changes the price). */
 export interface PricingRuleInfo {
   bodyStyle: BodyStyleCode
   labelFr: string
   sizeClass: 'S' | 'M' | 'L' | 'XL'
-  glassFactor: number
-  basePrice: number
-  laborRatePerMin: number
+  /** utilitaire / pick-up: booked without a price, the workshop sets it after analysis */
+  quoteOnRequest: boolean
+  /** default pose time avant + arrière (minutes) */
+  defaultLaborMinutes: number
+  rearPrice: number
+  frontPrice: number
+  windshieldPrice: number
+}
+
+/** Per-model special prices (Tesla Model 3 …) — null = body-style price. */
+export interface ModelPriceOverride {
+  modelId: string
+  makeName: string
+  modelName: string
+  rearPrice: number | null
+  frontPrice: number | null
+  windshieldPrice: number | null
 }
 
 export interface AppSettings {
@@ -43,8 +57,6 @@ export interface AppSettings {
   bayCount: number
   cancellationCutoffHours: number
   holdTtlMinutes: number
-  limoVltThreshold: number
-  limoSupplement: number
   minLeadTimeHours: number
   bookingHorizonDays: number
   contactPhone: string
@@ -55,6 +67,8 @@ export interface Catalog {
   zones: CatalogZone[]
   vltStops: number[]
   rules: Partial<Record<BodyStyleCode, PricingRuleInfo>>
+  /** keyed by model id */
+  modelOverrides: Record<string, ModelPriceOverride>
   settings: AppSettings
 }
 
@@ -88,8 +102,9 @@ export interface BodyStyleRow {
   labelFr: string
   sizeClass: 'S' | 'M' | 'L' | 'XL'
   displayOrder: number
-  /** admin-editable surcoût applied to every lazily-created variant */
+  /** admin-editable pose time (avant + arrière) applied to every lazily-created variant */
   defaultLaborMinutes: number
+  quoteOnRequest: boolean
 }
 /** One hit of search_vehicles — a generation with the variants already referenced. */
 export interface VehicleSearchHit {
@@ -122,8 +137,10 @@ export interface VariantRow {
 export interface ResolvedVehicle {
   variantId: string
   vehicleId?: string
-  /** variant overhead minutes — lets the local quote match the server exactly */
+  /** variant pose time (avant + arrière) — lets the local quote match the server exactly */
   baseLaborMinutes: number
+  /** for per-model price overrides */
+  modelId?: string
   make: string
   model: string
   generation: string
@@ -185,12 +202,13 @@ export interface ServerQuote {
   duration_min: number
   compliant: boolean
   specs: ServerQuoteLine[]
+  on_request: boolean
   breakdown: {
-    base: number
     zones: number
-    labor: { minutes: number; rate: number; amount: number }
-    limo_supplement: number
-    total: number
+    /** null = sur devis (utilitaire / pick-up) */
+    total: number | null
+    on_request: boolean
+    model_override: boolean
     pricing_version_id: string
   }
 }
@@ -203,7 +221,8 @@ export interface CreatedBooking {
   duration_min: number
   status: BookingStatus
   legal_flag: LegalFlag
-  price_total: number
+  /** null = prix communiqué par l'atelier après analyse */
+  price_total: number | null
   price_breakdown: ServerQuote['breakdown']
   specs: ServerQuoteLine[]
   old_reference?: string
@@ -218,7 +237,8 @@ export interface MyBookingRow {
   durationMin: number
   status: BookingStatus
   legalFlag: LegalFlag
-  priceTotal: number
+  /** null = en attente du prix atelier (sur devis) */
+  priceTotal: number | null
   clientNotes: string | null
   variantId: string
   contactName: string
@@ -250,7 +270,8 @@ export interface AdminBookingRow {
   durationMin: number
   status: BookingStatus
   legalFlag: LegalFlag
-  priceTotal: number
+  /** null = sur devis, à fixer par l'atelier */
+  priceTotal: number | null
   contactName: string
   contactPhone: string
   contactEmail: string | null
@@ -316,6 +337,4 @@ export interface WorkshopHoursRow {
 export interface DraftPricing {
   versionId: string
   rules: PricingRuleInfo[]
-  /** zone → vlt → delta */
-  grid: Record<string, Record<number, number>>
 }

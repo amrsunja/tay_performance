@@ -1178,3 +1178,67 @@
   border-color: var(--border-strong);
   color: var(--text);
 }
+
+/* ---------- TLV stops (discrete: 5 · 15 · 20 · 35 · 50 · 70) ---------- */
+.tlvStops {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tlvStop {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+  padding: 9px 0;
+  border-radius: 9px;
+  border: 1px solid #2a3340;
+  background: var(--surface-well);
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+
+.tlvStop::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: currentColor;
+  opacity: var(--tlv-dark, 0.5);
+}
+
+.tlvStop:hover {
+  border-color: var(--accent-500);
+  color: #fff;
+}
+
+.tlvStopOn {
+  border-color: var(--brand-blue);
+  background: rgba(41, 171, 226, 0.12);
+  color: #7cc4ec;
+}
+
+.tlvStopOnFront {
+  border-color: var(--octane-500);
+  background: rgba(255, 158, 27, 0.12);
+  color: var(--octane-300);
+}
+
+.tlvStopIllegal {
+  border-style: dashed;
+}
+
+.onRequestBox {
+  border: 1px dashed rgba(255, 158, 27, 0.5);
+  background: rgba(255, 158, 27, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.45;
+}

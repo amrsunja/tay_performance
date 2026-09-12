@@ -9,8 +9,8 @@ export async function quoteBooking(variantId: string, specs: QuoteSpec[]): Promi
     p_specs: specs,
   })
   if (error) throw error
-  const q = data as { variant_id: string; duration_min: number; compliant: boolean; specs: ServerQuote['specs']; breakdown: ServerQuote['breakdown'] }
-  return { ...q, duration_min: Number(q.duration_min) }
+  const q = data as ServerQuote
+  return { ...q, on_request: Boolean(q.on_request), duration_min: Number(q.duration_min) }
 }
 
 export interface CreateBookingInput {
@@ -72,7 +72,7 @@ interface BookingSelectRow {
   duration_min: number
   status: string
   legal_flag: string
-  price_total: number
+  price_total: number | null
   client_notes: string | null
   variant_id: string
   contact_name: string
@@ -108,7 +108,7 @@ function mapBookingRow(b: BookingSelectRow): MyBookingRow {
     durationMin: Number(b.duration_min),
     status: b.status as BookingStatus,
     legalFlag: b.legal_flag as LegalFlag,
-    priceTotal: Number(b.price_total),
+    priceTotal: b.price_total == null ? null : Number(b.price_total),
     clientNotes: b.client_notes,
     variantId: b.variant_id,
     contactName: b.contact_name,
