@@ -1,3 +1,8 @@
+# Tay Performance — https://tayperformance.fr
+# Les routes privées (portail client, admin) n'ont aucune valeur en recherche et
+# exposeraient des pages vides aux crawlers : elles sont bloquées ici ET marquées
+# noindex par src/lib/seo.ts.
+
 User-agent: *
 Allow: /
 Disallow: /admin
@@ -6,5 +11,12 @@ Disallow: /garage
 Disallow: /reservations
 Disallow: /profil
 Disallow: /connexion
+
+# Les IA qui citent des sources locales : laissées ouvertes volontairement.
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
 
 Sitemap: https://tayperformance.fr/sitemap.xml

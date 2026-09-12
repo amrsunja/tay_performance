@@ -6,9 +6,11 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/sitemap.mjs && tsc -b && vite build && node scripts/prerender.mjs",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seo:sitemap": "node scripts/sitemap.mjs",
+    "seo:prerender": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

@@ -88,8 +88,8 @@ export default function BookingPage() {
                 Quel véhicule teinter<span style={{ color: 'var(--accent-500)' }}>&nbsp;?</span>
               </h1>
               <p className={styles.lede}>
-                Marque → modèle → génération → carrosserie. La carrosserie détermine la surface vitrée, le prix et la
-                durée de pose.
+                Marque, modèle, génération, carrosserie. C'est la carrosserie qui donne la surface vitrée réelle —
+                donc le prix et le temps de pose. Aucun compte à créer, aucun acompte.
               </p>
             </div>
             <div data-reveal style={{ marginTop: 26 }}>
@@ -110,8 +110,14 @@ export default function BookingPage() {
       )}
 
       <footer className={styles.footer}>
-        <span className="mono">© 2026 Tay Performance · 19 Rue de l'industrie, 67400 Illkirch-Graffenstaden</span>
-        <span className="mono">Conforme réglementation vitres teintées · France 2026</span>
+        <span className="mono">© {new Date().getFullYear()} Tay Performance · 19 Rue de l'Industrie, 67400 Illkirch-Graffenstaden</span>
+        <span className="mono">
+          <Link to="/mentions-legales" className="navlink">Mentions légales</Link>
+          {' · '}
+          <Link to="/confidentialite" className="navlink">Confidentialité</Link>
+          {' · '}
+          <Link to="/cgv" className="navlink">CGV</Link>
+        </span>
       </footer>
     </div>
   )

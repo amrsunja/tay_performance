@@ -5,10 +5,18 @@
 import { useRef, useState } from 'react'
 import SectionTag from '../../components/ui/SectionTag'
 import Icon from '../../components/ui/Icon'
-import video1 from '../../assets/videos/video1.mp4'
-import video2 from '../../assets/videos/video2.mp4'
-import video3 from '../../assets/videos/video3.mp4'
-import video4 from '../../assets/videos/video4.mp4'
+/* Vidéos ré-encodées en 540p (src/assets/media) + une image d'affiche par vidéo.
+   Sans poster, le navigateur télécharge le début de CHAQUE vidéo pour afficher une
+   première image : 4 fichiers tirés au chargement de la page d'accueil. Avec poster +
+   preload="none", rien n'est téléchargé tant que le visiteur ne clique pas. */
+import video1 from '../../assets/media/video1.mp4'
+import video2 from '../../assets/media/video2.mp4'
+import video3 from '../../assets/media/video3.mp4'
+import video4 from '../../assets/media/video4.mp4'
+import poster1 from '../../assets/media/video1.jpg'
+import poster2 from '../../assets/media/video2.jpg'
+import poster3 from '../../assets/media/video3.jpg'
+import poster4 from '../../assets/media/video4.jpg'
 import styles from './landing.module.css'
 
 export const SOCIAL_LINKS = {
@@ -17,7 +25,12 @@ export const SOCIAL_LINKS = {
   facebook: 'https://www.facebook.com/p/Tay-Performance-100086047330108/',
 } as const
 
-const VIDEOS = [video1, video2, video3, video4]
+const VIDEOS = [
+  { src: video1, poster: poster1, alt: "Pose d'un film teinté sur une vitre latérale à l'atelier Tay Performance" },
+  { src: video2, poster: poster2, alt: 'Découpe et maroufflage du film teinté sur un véhicule' },
+  { src: video3, poster: poster3, alt: "Résultat d'une pose de vitres teintées à Illkirch-Graffenstaden" },
+  { src: video4, poster: poster4, alt: "L'atelier Tay Performance en cours de prestation" },
+]
 
 function InstagramIcon() {
   return (
@@ -142,9 +155,9 @@ export default function SocialSection() {
           </button>
 
           <div ref={sliderRef} className={styles.socialSlider}>
-            {VIDEOS.map((src, i) => (
+            {VIDEOS.map((item, i) => (
               <div
-                key={src}
+                key={item.src}
                 role="button"
                 tabIndex={0}
                 className={styles.socialVideoCard}
@@ -161,13 +174,15 @@ export default function SocialSection() {
                   ref={(el) => {
                     videoRefs.current[i] = el
                   }}
-                  src={src}
+                  src={item.src}
+                  poster={item.poster}
+                  aria-label={item.alt}
                   className={styles.socialVideo}
                   autoPlay={i === 0}
                   muted={i === 0}
                   loop
                   playsInline
-                  preload={i === 0 ? 'auto' : 'metadata'}
+                  preload={i === 0 ? 'metadata' : 'none'}
                   onPlay={() => setPlaying(i)}
                   onPause={() => setPlaying((p) => (p === i ? null : p))}
                 />

@@ -10,18 +10,13 @@ import { useReveal } from '../../hooks/useReveal'
 import { useSeo } from '../../lib/seo'
 import { getCatalog, getWorkshopHours } from '../../api/catalog'
 import type { WorkshopHoursRow } from '../../types/api'
+import { WORKSHOP, mapsUrl } from '../../lib/workshop'
 import styles from '../portal/portal.module.css'
 
-export const WORKSHOP = {
-  name: 'Tay Performance',
-  street: "19 Rue de l'industrie",
-  city: '67400 Illkirch-Graffenstaden',
-  full: "19 Rue de l'industrie, 67400 Illkirch-Graffenstaden",
-} as const
+/* WORKSHOP / mapsUrl vivent dans src/lib/workshop.ts — le footer les utilise sur toutes
+   les pages et cette page-ci est chargée à la demande. Ré-export pour compatibilité. */
+export { WORKSHOP, mapsUrl } from '../../lib/workshop'
 
-export function mapsUrl(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${WORKSHOP.name}, ${address}`)}`
-}
 function embedUrl(address: string): string {
   return `https://www.google.com/maps?q=${encodeURIComponent(`${WORKSHOP.name}, ${address}`)}&z=15&output=embed`
 }
@@ -129,7 +124,10 @@ export default function AddressPage() {
             <h1 className={`clash ${styles.h1}`}>
               Nous trouver<span style={{ color: 'var(--accent-500)' }}>.</span>
             </h1>
-            <p className={styles.lede}>À 10 min de Strasbourg centre — parking sur place, dépôt du véhicule à l'heure du rendez-vous.</p>
+            <p className={styles.lede}>
+              19 rue de l'Industrie, à 10 minutes de Strasbourg centre. Parking devant l'atelier, salle d'attente
+              avec café si vous préférez rester pendant la pose.
+            </p>
           </div>
         </div>
 

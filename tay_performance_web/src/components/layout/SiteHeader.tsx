@@ -9,10 +9,11 @@ import Icon from '../ui/Icon'
 import styles from './layout.module.css'
 
 const NAV = [
-  { to: '/#services', label: 'Services' },
-  { to: '/#process', label: 'Process' },
-  { to: '/#galerie', label: 'Galerie' },
-  { to: '/#conformite', label: 'Conformité' },
+  { to: '/#services', label: 'Prestations' },
+  { to: '/#process', label: 'Comment ça se passe' },
+  { to: '/#avis', label: 'Avis' },
+  { to: '/#galerie', label: 'Réalisations' },
+  { to: '/#faq', label: 'FAQ' },
 ]
 
 function ProfileIcon() {

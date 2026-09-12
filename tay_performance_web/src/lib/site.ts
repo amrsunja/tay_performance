@@ -6,9 +6,10 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined)?.r
 export const SITE_NAME = 'Tay Performance'
 export const SITE_TAGLINE = 'Vitres teintées, covering & detailing à Strasbourg / Illkirch-Graffenstaden'
 
+/* ⚠ 155 caractères max : au-delà, Google tronque et réécrit lui-même la description.
+   Elle doit contenir la prestation, la ville, et une raison de cliquer. */
 export const DEFAULT_DESCRIPTION =
-  'Tay Performance — pose professionnelle de vitres teintées sur-mesure à Strasbourg (Illkirch-Graffenstaden, 67400). ' +
-  'Films teintés 5 % à 70 % TLV, covering, sellerie, detailing, éclairage intérieur. Réservation en ligne, conformité réglementation française, garantie.'
+  'Vitres teintées à Strasbourg (Illkirch, 67400) : prix calculé en ligne, créneau en 2 min, film découpé au véhicule. 5,0/5 sur 170 avis Google.'
 
 /** Cities used for local SEO copy (Eurométropole de Strasbourg). */
 export const SERVICE_AREA = ['Strasbourg', 'Illkirch-Graffenstaden', 'Schiltigheim', 'Lingolsheim', 'Ostwald', 'Geispolsheim', 'Bas-Rhin (67)'] as const

@@ -7,11 +7,15 @@ import CountUp from '../../components/ui/CountUp'
 import Icon from '../../components/ui/Icon'
 import { useReveal } from '../../hooks/useReveal'
 import { useSeo } from '../../lib/seo'
-import { DEFAULT_DESCRIPTION, SERVICE_AREA } from '../../lib/site'
+import { DEFAULT_DESCRIPTION, SERVICE_AREA, SITE_URL } from '../../lib/site'
+import { GOOGLE, RATING_FR, REVIEWS } from '../../lib/reviews'
 import SocialSection from './SocialSection'
+import { FAQ_ITEMS, FaqSection, ReviewsSection, WhyUsSection } from './TrustSections'
 import heroImg from '../../assets/visuel3.jpg'
-import introVideo from '../../assets/videos/intro.mp4'
-import introVideo2 from '../../assets/videos/intro2.mp4'
+/* Vidéos d'ambiance ré-encodées : 480p, 12 s, sans piste audio, ~700 Ko au lieu de 11 Mo.
+   Les sources longues restent dans src/assets/videos/ pour un futur ré-encodage. */
+import introVideo from '../../assets/media/intro.mp4'
+import introVideo2 from '../../assets/media/intro2.mp4'
 import visuel1 from '../../assets/visuel1.jpg'
 import visuel2 from '../../assets/visuel2.jpg'
 import visuel4 from '../../assets/visuel4.jpg'
@@ -27,15 +31,15 @@ const SERVICES = [
     featured: true,
     img: visuel6,
     title: 'Vitres teintées',
-    body: 'Films découpés au véhicule, pose intérieure sans bulle, teintes de 5 % à 70 % TLV. Avant, arrière, lunette, pare-brise. Réservation et prix en ligne.',
-    cta: { to: '/reserver', label: 'Réserver une pose →' },
+    body: "Films découpés au format de chaque vitre, posés par l'intérieur. De 5 % à 70 % de transmission lumineuse, sur les vitres avant, arrière, la lunette et le pare-brise. Prix calculé et créneau réservé en ligne.",
+    cta: { to: '/reserver', label: 'Voir mon prix →' },
   },
   {
     id: '02',
     tone: 'blue',
     img: visuel1,
     title: 'Covering',
-    body: 'Changement de teinte total ou partiel, finitions mat / satin / brillant, protection de carrosserie.',
+    body: 'Changement de couleur complet ou par éléments : capot, toit, rétroviseurs. Finitions mat, satin ou brillant, et la peinture d\'origine reste intacte dessous.',
     cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
   },
   {
@@ -43,7 +47,7 @@ const SERVICES = [
     tone: 'red',
     img: visuel2,
     title: 'Sellerie',
-    body: 'Rénovation et personnalisation de l’intérieur : sièges, volant, garnitures, cuir et alcantara.',
+    body: 'Sièges fatigués, volant lustré, garnitures marquées : reprise en cuir ou alcantara, à l\'identique ou dans la finition que vous voulez.',
     cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
   },
   {
@@ -51,7 +55,7 @@ const SERVICES = [
     tone: 'blue',
     img: visuel4,
     title: 'Detailing',
-    body: 'Rénovation esthétique, polissage, décontamination, traitement céramique longue durée.',
+    body: 'Décontamination, polissage des micro-rayures, phares repolis et protection céramique qui tient plusieurs années.',
     cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
   },
   {
@@ -59,72 +63,128 @@ const SERVICES = [
     tone: 'amber',
     img: visuel5,
     title: 'Éclairage intérieur',
-    body: 'Ambiance LED sur-mesure, éclairage d’habitacle et de seuils, finition signature.',
+    body: 'Bandeaux LED intégrés dans les contre-portes, la planche de bord et les seuils, avec la couleur et l\'intensité de votre choix.',
     cta: { to: '/adresse', label: 'Sur devis à l’atelier →' },
   },
 ] as const
 
 const STEPS = [
-  { id: '01', tone: 'blue', title: 'Configurez', body: 'Sélectionnez votre véhicule, vos zones et vos teintes. Le prix et la durée s’affichent en direct.' },
-  { id: '02', tone: 'amber', title: 'Réservez', body: 'Choisissez un créneau réel à l’atelier. Disponibilités en temps réel, aucune double réservation.' },
-  { id: '03', tone: 'red', title: 'Déposez', body: 'Vous déposez votre véhicule et le récupérez 90 minutes plus tard.' },
+  {
+    id: '01',
+    tone: 'blue',
+    title: 'Vous composez votre pose',
+    body: "Votre modèle, les vitres à traiter, la teinte. Le prix et la durée se mettent à jour à chaque choix. Pas de compte à créer, pas de carte bancaire.",
+  },
+  {
+    id: '02',
+    tone: 'amber',
+    title: 'Vous prenez un créneau',
+    body: "Vous voyez l'agenda réel de l'atelier. Le créneau est bloqué pour vous dès que vous le choisissez, l'atelier le valide et vous confirme par e-mail.",
+  },
+  {
+    id: '03',
+    tone: 'red',
+    title: 'Vous déposez la voiture',
+    body: "1 h à 3 h selon les vitres. Vous attendez sur place — canapé, télé, café — ou vous repassez. Vous réglez à la fin, une fois le travail vérifié avec vous.",
+  },
 ] as const
 
 const GALLERY = [
-  { src: visuel1, title: "L'équipe Tay Performance", caption: 'BMW Série 5 · finition complète', border: 'var(--brand-blue)', cls: 'galBig' },
-  { src: visuel4, title: 'Pose vitrage', caption: '', border: 'var(--brand-red)', cls: '' },
-  { src: visuel2, title: 'Précision atelier', caption: '', border: 'var(--octane-500)', cls: 'galTall' },
-  { src: visuel5, title: 'Teinte arrière', caption: '', border: 'var(--brand-blue)', cls: '' },
-  { src: visuel6, title: 'Film teinté · pose intérieure', caption: '', border: 'var(--octane-500)', cls: 'galWide' },
+  {
+    src: visuel1,
+    title: "L'équipe Tay Performance",
+    alt: "L'équipe de Tay Performance devant une BMW Série 5 aux vitres teintées, atelier d'Illkirch-Graffenstaden",
+    caption: 'BMW Série 5 · finition complète',
+    border: 'var(--brand-blue)',
+    cls: 'galBig',
+  },
+  {
+    src: visuel4,
+    title: 'Pose du film sur vitre latérale',
+    alt: 'Pose du film teinté sur une vitre latérale avant, à la raclette, à l\'atelier Tay Performance de Strasbourg',
+    caption: '',
+    border: 'var(--brand-red)',
+    cls: '',
+  },
+  {
+    src: visuel2,
+    title: 'Découpe au format du vitrage',
+    alt: 'Découpe du film teinté au format exact du vitrage avant maroufflage',
+    caption: '',
+    border: 'var(--octane-500)',
+    cls: 'galTall',
+  },
+  {
+    src: visuel5,
+    title: 'Vitres arrière teintées',
+    alt: 'Vitres latérales arrière et lunette teintées sur un véhicule sorti de l\'atelier Tay Performance',
+    caption: '',
+    border: 'var(--brand-blue)',
+    cls: '',
+  },
+  {
+    src: visuel6,
+    title: 'Film teinté posé par l\'intérieur',
+    alt: 'Film teinté posé par l\'intérieur du vitrage, sans bulle, sur un véhicule à Illkirch-Graffenstaden',
+    caption: '',
+    border: 'var(--octane-500)',
+    cls: 'galWide',
+  },
 ] as const
 
 const MARQUEE_ITEMS = ['VITRES TEINTÉES', 'COVERING', 'SELLERIE', 'DETAILING', 'ÉCLAIRAGE INTÉRIEUR']
 const MARQUEE_DOTS = ['var(--brand-blue)', 'var(--octane-500)', 'var(--brand-red)']
 
-/* FAQ rich result — mirrors the #conformite section (keep both in sync). */
-const LANDING_JSON_LD = {
+/* Rich results de la page d'accueil.
+   - FAQPage : généré depuis FAQ_ITEMS, qui est AUSSI ce qui s'affiche dans <FaqSection/>.
+     Google retire le rich result si la réponse n'est pas visible sur la page — d'où la
+     source unique.
+   - AggregateRating + Review : recopiés de la fiche Google (src/lib/reviews.ts). Ne
+     jamais gonfler ces chiffres, c'est un motif de sanction manuelle. */
+const FAQ_JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'Les vitres teintées sont-elles légales en France ?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: "Oui, à condition de respecter la réglementation : les vitres avant (pare-brise et vitres latérales avant) doivent laisser passer au moins 70 % de lumière (TLV ≥ 70 %). Les vitres arrière et la lunette sont libres. Tay Performance applique ces règles automatiquement dans son configurateur.",
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Quel est le prix d’une pose de vitres teintées à Strasbourg ?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Le tarif dépend du véhicule, des zones (avant, arrière, lunette, bande pare-soleil) et de la teinte choisie. Le configurateur en ligne de Tay Performance affiche le prix et la durée exacts en direct, avant de réserver un créneau à l’atelier d’Illkirch-Graffenstaden.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Combien de temps dure la pose de film teinté ?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Selon les zones, comptez généralement de 1 h à 3 h. La durée estimée est calculée automatiquement lors de la réservation en ligne, et vous déposez simplement le véhicule à l’heure du rendez-vous.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Où se trouve l’atelier Tay Performance ?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: "19 Rue de l'Industrie, 67400 Illkirch-Graffenstaden, à 10 minutes de Strasbourg centre. Parking sur place. Nous intervenons pour toute l'Eurométropole de Strasbourg et le Bas-Rhin.",
-      },
-    },
-  ],
+  '@id': `${SITE_URL}/#faq`,
+  mainEntity: FAQ_ITEMS.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
 }
+
+const RATING_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'AutoRepair',
+  '@id': `${SITE_URL}/#business`,
+  name: 'Tay Performance',
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: GOOGLE.rating,
+    reviewCount: GOOGLE.reviewCount,
+    bestRating: 5,
+    worstRating: 1,
+  },
+  review: REVIEWS.map((r) => ({
+    '@type': 'Review',
+    author: { '@type': 'Person', name: r.author },
+    datePublished: r.date,
+    reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+    reviewBody: r.text,
+  })),
+}
+
+const BREADCRUMB_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Accueil', item: `${SITE_URL}/` }],
+}
+
+const LANDING_JSON_LD = [FAQ_JSON_LD, RATING_JSON_LD, BREADCRUMB_JSON_LD]
 
 export default function LandingPage() {
   useReveal()
   useSeo({
-    title: 'Vitres Teintées Strasbourg · Tay Performance — Film teinté, Covering, Detailing (Illkirch 67400)',
+    title: 'Vitres teintées Strasbourg — prix en ligne et rendez-vous · Tay Performance (Illkirch 67400)',
     description: DEFAULT_DESCRIPTION,
     path: '/',
     jsonLd: LANDING_JSON_LD,
@@ -154,11 +214,11 @@ export default function LandingPage() {
         {/* intro videos flanking the bg image (hidden ≤960px) */}
         <div className={styles.heroSideVideos} aria-hidden>
           <div className={`${styles.heroSide} ${styles.heroSideLeft}`}>
-            <video src={introVideo} autoPlay muted loop playsInline preload="auto" />
+            <video src={introVideo} autoPlay muted loop playsInline preload="metadata" />
             <span className={styles.heroSideTint} />
           </div>
           <div className={`${styles.heroSide} ${styles.heroSideRight}`}>
-            <video src={introVideo2} autoPlay muted loop playsInline preload="auto" />
+            <video src={introVideo2} autoPlay muted loop playsInline preload="metadata" />
             <span className={styles.heroSideTint} />
           </div>
         </div>
@@ -173,31 +233,31 @@ export default function LandingPage() {
 
         <div className={styles.heroContent}>
           <div data-reveal>
-            <SectionTag>Vitres Teintées · Covering · Detailing · 67400</SectionTag>
+            <SectionTag>Illkirch-Graffenstaden · 10 min de Strasbourg centre</SectionTag>
           </div>
           <h1 className={`clash ${styles.heroTitle}`}>
-            <span className="sr-only">Vitres teintées à Strasbourg — Tay Performance. </span>
             <span className={styles.heroLine}>
               <span data-reveal data-anim="hero" data-delay="90" style={{ display: 'inline-block' }}>
-                L'obscurité,
+                Vitres teintées
               </span>
             </span>
             <span className={styles.heroLine}>
               <span data-reveal data-anim="hero" data-delay="200" style={{ display: 'inline-block', color: 'var(--accent-500)' }}>
-                posée au millimètre.
+                à Strasbourg.
               </span>
             </span>
           </h1>
           <p data-reveal data-anim="hero" data-delay="520" className={styles.heroLede}>
-            Pose professionnelle de films teintés sur-mesure. Vous déposez la voiture, nos installateurs s'occupent du
-            reste — précision, garantie, conformité légale française.
+            Film découpé au format de vos vitres, posé par l'intérieur, sans bulle. Vous choisissez la teinte, le
+            site affiche le prix et la durée, vous prenez le créneau. {RATING_FR}/5 sur {GOOGLE.reviewCount} avis
+            Google.
           </p>
           <div data-reveal data-delay="640" className={styles.heroCtas}>
             <Link to="/reserver" className="cta" style={{ fontSize: 16, padding: '17px 28px' }}>
-              Réserver un créneau <Icon name="arrow-right" size={18} />
+              Voir mon prix en 2 min <Icon name="arrow-right" size={18} />
             </Link>
-            <a href="#galerie" className="ghost" style={{ fontSize: 16, padding: '17px 24px', fontWeight: 500 }}>
-              Voir la galerie
+            <a href="#avis" className="ghost" style={{ fontSize: 16, padding: '17px 24px', fontWeight: 500 }}>
+              Lire les avis
             </a>
           </div>
         </div>
@@ -209,31 +269,31 @@ export default function LandingPage() {
           </span>
         </div>
 
+        {/* Chiffres relevés sur la fiche Google le 12/09/2026 — voir src/lib/reviews.ts.
+            Ne mettez ici que ce qui est vérifiable : une stat inventée se paie au premier avis. */}
         <div data-reveal className={styles.statBand}>
           <div className={styles.stat}>
             <div className={`mono ${styles.statValue}`}>
-              <CountUp target={3000} suffix="+" />
+              <CountUp target={50} divide={10} />
+              <Icon name="star" size={20} style={{ color: 'var(--octane-500)' }} />
             </div>
-            <div className={styles.statLabel}>Véhicules traités</div>
+            <div className={styles.statLabel}>Note Google</div>
           </div>
           <div className={styles.stat}>
             <div className={`mono ${styles.statValue}`}>
-              <CountUp target={49} divide={10} />
-              <Icon name="star" size={20} style={{ color: 'var(--brand-blue)' }} />
+              <CountUp target={GOOGLE.reviewCount} />
             </div>
-            <div className={styles.statLabel}>Note moyenne clients</div>
-          </div>
-          <div className={styles.stat}>
-            <div className={`mono ${styles.statValue}`}>
-              <CountUp target={100} suffix="%" />
-            </div>
-            <div className={styles.statLabel}>Conforme loi 2026</div>
+            <div className={styles.statLabel}>Avis, aucun sous 5 étoiles</div>
           </div>
           <div className={styles.stat}>
             <div className={`mono ${styles.statValue}`}>
               <CountUp target={90} suffix=" min" />
             </div>
-            <div className={styles.statLabel}>Pose moyenne citadine</div>
+            <div className={styles.statLabel}>Pose type sur une citadine</div>
+          </div>
+          <div className={styles.stat}>
+            <div className={`mono ${styles.statValue}`}>0 €</div>
+            <div className={styles.statLabel}>D'acompte à la réservation</div>
           </div>
         </div>
       </section>
@@ -261,13 +321,13 @@ export default function LandingPage() {
             <div data-reveal data-anim="left">
               <SectionTag gradient="linear-gradient(90deg,#29ABE2,#FF9E1B)">Nos prestations</SectionTag>
               <h2 className={`sat ${styles.h2}`}>
-                Le garage digital,
+                Ce qu'on fait
                 <br />
-                prestation par prestation
+                à l'atelier
               </h2>
             </div>
             <Link to="/reserver" data-reveal data-anim="right" className={`navlink ${styles.sectionHeadLink}`}>
-              Tout voir <Icon name="arrow-right" size={15} />
+              Chiffrer ma pose <Icon name="arrow-right" size={15} />
             </Link>
           </div>
           <ServicesSlider />
@@ -279,9 +339,9 @@ export default function LandingPage() {
         <div className={styles.inner}>
           <div data-reveal className={styles.processHead}>
             <SectionTag gradient="linear-gradient(90deg,#FF9E1B,#ED1C24)" centered>
-              Comment ça marche
+              Comment ça se passe
             </SectionTag>
-            <h2 className={`sat ${styles.h2}`}>Trois étapes, zéro friction</h2>
+            <h2 className={`sat ${styles.h2}`}>De la simulation au véhicule rendu</h2>
           </div>
           <div className={styles.processGrid}>
             {STEPS.map((step, i) => (
@@ -295,12 +355,15 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ============ AVIS GOOGLE ============ */}
+      <ReviewsSection />
+
       {/* ============ GALLERY ============ */}
       <section id="galerie" className={styles.sectionAlt}>
         <div className={styles.inner}>
           <div data-reveal style={{ marginBottom: 44 }}>
             <SectionTag gradient="linear-gradient(90deg,#29ABE2,#ED1C24)">Réalisations</SectionTag>
-            <h2 className={`sat ${styles.h2}`}>L'atelier en action</h2>
+            <h2 className={`sat ${styles.h2}`}>Des voitures sorties de l'atelier</h2>
           </div>
           <div className={styles.galleryGrid}>
             {GALLERY.map((item, i) => (
@@ -311,7 +374,7 @@ export default function LandingPage() {
                 data-anim="mask"
                 data-delay={90 * i}
               >
-                <img src={item.src} alt={item.title} className={styles.galImg} />
+                <img src={item.src} alt={item.alt} className={styles.galImg} loading="lazy" decoding="async" />
                 <figcaption className={styles.galCap} style={{ borderTop: `2px solid ${item.border}` }}>
                   <div className={`sat ${styles.galCapTitle}`}>{item.title}</div>
                   {item.caption && <div className={styles.galCapSub}>{item.caption}</div>}
@@ -322,8 +385,14 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ============ POURQUOI NOUS ============ */}
+      <WhyUsSection />
+
       {/* ============ SOCIAL ============ */}
       <SocialSection />
+
+      {/* ============ FAQ ============ */}
+      <FaqSection />
 
       {/* ============ CONFORMITE ============ */}
       <section id="conformite" className={styles.section}>
@@ -331,16 +400,17 @@ export default function LandingPage() {
           <div data-reveal className={styles.legalCard}>
             <div className={styles.legalGlowline} aria-hidden />
             <div>
-              <span className={styles.legalTag}>Conformité garantie</span>
+              <span className={styles.legalTag}>Réglementation</span>
               <h2 className={`sat ${styles.legalTitle}`}>
                 <span className="sr-only">Vitres teintées légales en France : </span>
-                On vous pose la teinte légale,
+                Ce que la loi autorise,
                 <br />
-                pas une amende.
+                dit avant la pose.
               </h2>
               <p className={styles.legalBody}>
-                Notre configurateur applique la réglementation française 2026 en direct : minimum 70% TLV à l'avant,
-                arrière libre. Vous voyez tout de suite ce qui est autorisé.
+                Depuis le décret du 13 avril 2016, le pare-brise et les vitres avant doivent laisser passer au moins
+                70 % de la lumière. L'arrière et la lunette sont libres. Le configurateur vous signale toute
+                configuration hors clous pendant que vous la composez — pas au moment du contrôle technique.
               </p>
             </div>
             <div className={styles.legalGrid}>
@@ -353,12 +423,12 @@ export default function LandingPage() {
                 <span>Vitres arrière</span>
               </div>
               <div className={styles.legalStat}>
-                <div className="mono" style={{ color: 'var(--brand-red)' }}>135€</div>
-                <span>Amende évitée</span>
+                <div className="mono" style={{ color: 'var(--brand-red)' }}>135 €</div>
+                <span>Amende + 3 points si trop sombre</span>
               </div>
               <div className={styles.legalStat}>
-                <div className="mono" style={{ color: 'var(--text-hi)' }}>10cm</div>
-                <span>Bande pare-soleil max</span>
+                <div className="mono" style={{ color: 'var(--text-hi)' }}>Bande</div>
+                <span>Pare-soleil tolérée en haut de pare-brise</span>
               </div>
             </div>
           </div>
@@ -370,18 +440,21 @@ export default function LandingPage() {
         <div className={styles.ctaHalo} aria-hidden />
         <div data-reveal className={styles.ctaInner}>
           <h2 className={`clash ${styles.ctaTitle}`}>
-            Prêt à teinter
+            Votre prix,
             <br />
-            votre véhicule&nbsp;?
-            <span className="sr-only"> Vitres teintées à {SERVICE_AREA.slice(0, 5).join(', ')}.</span>
+            maintenant.
           </h2>
-          <p className={styles.ctaLede}>Devis transparent en moins de 3 minutes. Créneau confirmé en direct.</p>
+          <p className={styles.ctaLede}>
+            Deux minutes de configurateur, aucun compte, aucun acompte : vous voyez le montant et les créneaux libres
+            avant de vous engager. Nous recevons les véhicules de {SERVICE_AREA.slice(0, 5).join(', ')} et de tout le
+            Bas-Rhin.
+          </p>
           <Link
             to="/reserver"
             className="cta"
             style={{ fontSize: 17, padding: '19px 34px', marginTop: 34, animation: 'tp-pulse 2.8s ease-in-out infinite' }}
           >
-            Réserver maintenant <Icon name="arrow-right" size={18} />
+            Configurer ma pose <Icon name="arrow-right" size={18} />
           </Link>
         </div>
       </section>
@@ -456,7 +529,13 @@ function ServicesSlider() {
             aria-roledescription="diapositive"
             aria-label={`${i + 1} sur ${SERVICES.length} — ${svc.title}`}
           >
-            <img src={svc.img} alt="" className={styles.serviceSlideImg} loading="lazy" />
+            <img
+              src={svc.img}
+              alt={`${svc.title} — Tay Performance, Illkirch-Graffenstaden`}
+              className={styles.serviceSlideImg}
+              loading="lazy"
+              decoding="async"
+            />
             <div className={styles.serviceSlideShade} />
             <div className={styles.serviceSlideBody}>
               {'featured' in svc && svc.featured ? (

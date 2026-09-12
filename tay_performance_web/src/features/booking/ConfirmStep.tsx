@@ -48,9 +48,9 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
         <div className={`mono ${styles.confirmKicker}`}>
           {booking.old_reference ? 'Rendez-vous reprogrammé' : 'Demande envoyée'}
         </div>
-        <h1 className={`clash ${styles.h1}`}>Votre créneau est réservé.</h1>
+        <h1 className={`clash ${styles.h1}`}>Votre créneau est bloqué.</h1>
         <p className={styles.confirmLede}>
-          L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation.
+          Personne d'autre ne peut le prendre. L'atelier valide la demande et vous recevez l'e-mail de confirmation.
           {booking.price_total == null
             ? ' Votre véhicule nécessite une analyse : l’atelier vous rappelle pour fixer le prix, qui apparaîtra ensuite dans vos réservations.'
             : ''}
