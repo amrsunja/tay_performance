@@ -8,7 +8,10 @@ import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
 import { queryClient } from './lib/queryClient'
 
-createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')!
+rootEl.dataset.tayMounted = '1'
+
+createRoot(rootEl).render(
   <StrictMode>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>

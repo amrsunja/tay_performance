@@ -144,6 +144,19 @@
         </main>
       </noscript>
     </div>
+    <script>
+      // Boot guard: a module-eval throw (e.g. missing VITE_* env at build time)
+      // would otherwise leave a blank dark page with no clue.
+      window.addEventListener('error', function (e) {
+        var root = document.getElementById('root');
+        if (!root || root.dataset.tayMounted === '1') return;
+        root.innerHTML =
+          '<main id="tay-boot-error" style="font-family:system-ui,sans-serif;padding:32px;max-width:720px;margin:auto;color:#e6ebf0">' +
+          '<h1>Erreur de chargement</h1><p style="opacity:.8">' +
+          String((e && (e.message || e.error)) || 'Erreur inconnue').replace(/</g, '&lt;') +
+          '</p></main>';
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
