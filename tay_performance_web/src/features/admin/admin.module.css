@@ -1,7 +1,7 @@
 /* ============ shell ============ */
 .shell {
   display: flex;
-  min-height: 100vh;
+  min-height: 100svh;
   background: var(--bg-canvas);
 }
 
@@ -53,9 +53,11 @@
   transition: all 0.18s;
 }
 
-.navItem:hover {
-  color: var(--text);
-  background: var(--surface-1);
+@media (hover: hover) and (pointer: fine) {
+  .navItem:hover {
+    color: var(--text);
+    background: var(--surface-1);
+  }
 }
 
 .navItemActive {
@@ -66,9 +68,22 @@
 }
 
 .navIcon {
+  display: grid;
+  place-items: center;
   width: 18px;
-  text-align: center;
+  flex: none;
   color: var(--text-faint);
+}
+
+.navLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navLabelShort {
+  display: none;
 }
 
 .navItemActive .navIcon {
@@ -407,9 +422,11 @@
   transition: all 0.18s;
 }
 
-.iconBtn:hover {
-  border-color: var(--accent-500);
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  .iconBtn:hover {
+    border-color: var(--accent-500);
+    color: #fff;
+  }
 }
 
 /* ============ agenda ============ */
@@ -419,6 +436,9 @@
   background: var(--surface-inset);
   padding: 18px;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .agendaGrid {
@@ -504,10 +524,12 @@
   transition: transform 0.15s var(--ease), box-shadow 0.2s;
 }
 
-.agendaBlock:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  z-index: 2;
+@media (hover: hover) and (pointer: fine) {
+  .agendaBlock:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    z-index: 2;
+  }
 }
 
 .agendaBlockTitle {
@@ -532,8 +554,10 @@
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   background: var(--surface-inset);
-  overflow: hidden;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -833,16 +857,10 @@
   }
   .sidebar .navItem {
     justify-content: center;
-    padding: 10px;
+    padding: 11px 10px;
   }
-  .sidebar .navItem :not(.navIcon) {
+  .navLabel {
     display: none;
-  }
-  .navItem {
-    font-size: 0;
-  }
-  .navIcon {
-    font-size: 15px;
   }
   .sidebarTag,
   .sidebarFoot {
@@ -856,5 +874,84 @@
   }
   .workspace {
     padding: 18px;
+  }
+}
+
+/* ---------- phone: sidebar → bottom tab bar ----------
+   A 64px vertical rail eats a sixth of a 375px screen and puts the nav under
+   the thumb's blind spot. Below 700px it becomes a fixed bottom bar instead. */
+@media (max-width: 700px) {
+  .shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    order: 2;
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px max(6px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(10, 12, 15, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .sidebarLogo {
+    display: none;
+  }
+  .sidebarNav {
+    flex-direction: row;
+    width: 100%;
+    gap: 2px;
+  }
+  .sidebar .navItem {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 7px 2px;
+    font-size: 9.5px;
+    letter-spacing: 0.01em;
+    border-radius: 10px;
+  }
+  .navItemActive {
+    box-shadow: none;
+    background: var(--surface-1);
+  }
+  .navLabelShort {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mainCol {
+    order: 1;
+    /* room for the bar + the home indicator */
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    padding: 11px max(14px, env(safe-area-inset-left));
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .topbarDateText {
+    font-size: 11px;
+  }
+  .workspace {
+    padding: 14px max(14px, env(safe-area-inset-left));
+  }
+  .statRow {
+    grid-template-columns: 1fr 1fr;
   }
 }

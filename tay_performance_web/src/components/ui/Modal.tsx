@@ -8,6 +8,7 @@ interface ModalProps {
 }
 
 /** Minimal token-styled modal — used by garage add-vehicle and admin dialogs. */
+import Icon from './Icon'
 export default function Modal({ title, onClose, children, wide }: ModalProps) {
   return (
     <div
@@ -57,9 +58,12 @@ export default function Modal({ title, onClose, children, wide }: ModalProps) {
               background: 'var(--surface-1)',
               color: 'var(--text-dim)',
               cursor: 'pointer',
+              display: 'grid',
+              placeItems: 'center',
+              placeContent: 'center',
             }}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         </div>
         {children}

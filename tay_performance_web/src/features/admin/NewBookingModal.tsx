@@ -12,6 +12,7 @@ import { adminCreateBooking } from '../../api/admin'
 import { errorMessage } from '../../lib/supabase'
 import { computeLocalQuote, formatDuration, formatEuro, formatPrice, INITIAL_DRAFT } from '../booking/useBookingDraft'
 import type { ResolvedVehicle } from '../../types/api'
+import Icon from '../../components/ui/Icon'
 import { TLV_STOPS, type TintZoneCode } from '../../types/domain'
 
 const slotTimeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
@@ -88,7 +89,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
       <Modal title="Réservation créée" onClose={onClose}>
         <div style={{ display: 'grid', gap: 12 }}>
           <span style={{ color: 'var(--status-success)', fontSize: 15 }}>
-            ✓ <span className="mono">{reference}</span> — confirmée pour {contactName}
+            <Icon name="check" size={15} /> <span className="mono">{reference}</span> — confirmée pour {contactName}
             {priceOverride !== null ? ` · ${formatEuro(priceOverride)}${onRequest ? '' : ' (prix modifié)'}` : ''}.
           </span>
           <button type="button" className="cta" style={{ fontSize: 14, padding: '12px 22px', borderRadius: 12, justifySelf: 'start' }} onClick={onClose}>
@@ -134,7 +135,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                   TLV avant
                   <select className="field mono" value={frontVlt} onChange={(e) => setFrontVlt(Number(e.target.value))} style={{ padding: '8px 10px' }}>
                     {(catalog.data?.vltStops ?? [...TLV_STOPS]).map((v) => (
-                      <option key={v} value={v}>{v}%{v < 70 ? ' ⚠' : ''}</option>
+                      <option key={v} value={v}>{v}%{v < 70 ? ' (non conforme)' : ''}</option>
                     ))}
                   </select>
                 </label>
@@ -148,7 +149,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                 </label>
                 <span className="mono" style={{ fontSize: 13, color: 'var(--text-soft)', alignSelf: 'center' }}>
                   {formatDuration(quote.minutes)} · {formatPrice(quote.total)}
-                  {quote.nonCompliant ? ' · ⚠ hors conformité' : ''}
+                  {quote.nonCompliant ? ' · hors conformité' : ''}
                 </span>
               </div>
             </div>

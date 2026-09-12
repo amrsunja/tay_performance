@@ -1,5 +1,17 @@
 /* ============================================================
    Tay Performance — base styles, shared controls, motion
+
+   Mobile rules of the house (learned the hard way):
+   1. Every `:hover` that MOVES something is wrapped in
+      `@media (hover: hover) and (pointer: fine)`. On a touchscreen a tap leaves
+      :hover latched on the element, which is exactly the "card stays held /
+      sticky lift" feel we do not want.
+   2. A horizontal scroller must declare BOTH axes. `overflow-x: auto` alone makes
+      `overflow-y` compute from `visible` to `auto`, so the block scrolls
+      vertically too — that is the "scroll works in both directions inside the
+      block" bug. Use `.u-hscroll`.
+   3. Form controls are ≥16px on phones, otherwise iOS Safari zooms the page on
+      focus and never zooms back.
    ============================================================ */
 * {
   box-sizing: border-box;
@@ -8,6 +20,8 @@
 html {
   scroll-behavior: smooth;
   color-scheme: dark; /* native pickers, select arrows & scrollbars render for a dark UI */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -16,14 +30,19 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  /* never let a stray wide child create a sideways page scroll on a phone */
+  overflow-x: clip;
 }
 
 ::selection {
   background: rgba(41, 171, 226, 0.3);
 }
 
-img {
+img,
+svg,
+video {
   display: block;
+  max-width: 100%;
 }
 
 a {
@@ -34,10 +53,40 @@ button {
   font-family: inherit;
 }
 
+/* no blue flash / long-press callout on taps, no 300 ms click delay */
+a,
+button,
+label,
+summary,
+[role='button'],
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+a,
+button,
+[role='button'] {
+  touch-action: manipulation;
+}
+
 /* ---------- typography helpers ---------- */
 .clash { font-family: var(--font-display); }
 .sat { font-family: var(--font-head); }
 .mono { font-family: var(--font-mono); }
+
+/* ---------- horizontal scroller (carousels, tables) ---------- */
+.u-hscroll {
+  overflow-x: auto;
+  overflow-y: hidden; /* see rule 2 above */
+  overscroll-behavior-x: contain; /* no page-back swipe / rubber-band chaining */
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.u-hscroll::-webkit-scrollbar {
+  display: none;
+}
 
 /* ---------- shared keyframes ---------- */
 @keyframes tp-kenburns {
@@ -68,35 +117,91 @@ button {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ---------- scroll reveal ---------- */
+/* ============================================================
+   Scroll reveal
+   ------------------------------------------------------------
+   Animation-driven (not transition-driven) so each variant can move several
+   properties on its own curve, and so `will-change` disappears the moment the
+   animation ends instead of pinning a compositor layer for the whole session.
+   Only transform / opacity / clip-path are animated — no `filter: blur()`,
+   which is what made the old card reveals stutter on mobile GPUs.
+   `useReveal` adds `.tp-in` and sets `--tp-delay`.
+   ============================================================ */
+:root {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-back: cubic-bezier(0.18, 1.12, 0.32, 1);
+}
+
 [data-reveal] {
   opacity: 0;
-  transform: translateY(34px);
-  filter: blur(7px);
-  transition:
-    opacity 0.9s var(--ease),
-    transform 0.9s var(--ease),
-    filter 0.9s ease;
-  will-change: opacity, transform, filter;
 }
-[data-reveal][data-anim='left'] { transform: translateX(-52px); }
-[data-reveal][data-anim='right'] { transform: translateX(52px); }
-[data-reveal][data-anim='scale'] { transform: scale(0.9); }
-[data-reveal].tp-in {
+/* insurance: if the reveal script never boots, nothing stays invisible.
+   main.tsx stamps .tp-reveal-ready on <html> before React mounts. */
+html:not(.tp-reveal-ready) [data-reveal] {
   opacity: 1;
-  transform: none;
-  filter: blur(0);
+  animation: none !important;
+}
+
+[data-reveal].tp-in {
+  animation: tp-reveal-rise 0.82s var(--ease-out-soft) both;
+  animation-delay: var(--tp-delay, 0ms);
+}
+
+[data-reveal][data-anim='left'].tp-in { animation-name: tp-reveal-left; }
+[data-reveal][data-anim='right'].tp-in { animation-name: tp-reveal-right; }
+[data-reveal][data-anim='scale'].tp-in { animation-name: tp-reveal-scale; }
+[data-reveal][data-anim='mask'].tp-in { animation-name: tp-reveal-mask; animation-duration: 1s; }
+[data-reveal][data-anim='fade'].tp-in { animation-name: tp-reveal-fade; }
+/* the hero lines keep the cinematic soft-focus entrance (one-off, above the fold) */
+[data-reveal][data-anim='hero'] { filter: blur(7px); }
+[data-reveal][data-anim='hero'].tp-in { animation-name: tp-reveal-hero; animation-duration: 0.95s; }
+
+@keyframes tp-reveal-rise {
+  from { opacity: 0; transform: translate3d(0, 38px, 0) scale(0.975); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tp-reveal-left {
+  from { opacity: 0; transform: translate3d(-46px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tp-reveal-right {
+  from { opacity: 0; transform: translate3d(46px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tp-reveal-scale {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tp-reveal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tp-reveal-mask {
+  from { opacity: 0; clip-path: inset(0 0 100% 0 round 16px); transform: translate3d(0, 26px, 0); }
+  40% { opacity: 1; }
+  to { opacity: 1; clip-path: inset(0 0 0 0 round 16px); transform: none; }
+}
+@keyframes tp-reveal-hero {
+  from { opacity: 0; transform: translate3d(0, 34px, 0); filter: blur(7px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-reveal] {
-    transition-duration: 0.01s;
-    transform: none;
-    filter: none;
+  [data-reveal],
+  [data-reveal].tp-in {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    filter: none !important;
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
   }
   * {
     animation-duration: 0.01s !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01s !important;
   }
 }
 
@@ -108,6 +213,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  min-height: 46px;
   background: var(--accent-500);
   color: var(--bg-canvas);
   font-family: var(--font-body);
@@ -133,12 +239,18 @@ button {
   transform: skewX(-20deg);
   transition: left 0.55s ease;
 }
-.cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 0 4px rgba(41, 171, 226, 0.22), 0 16px 34px rgba(0, 0, 0, 0.55);
+@media (hover: hover) and (pointer: fine) {
+  .cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 4px rgba(41, 171, 226, 0.22), 0 16px 34px rgba(0, 0, 0, 0.55);
+  }
+  .cta:hover::after { left: 130%; }
+  .cta:active { transform: scale(0.97); }
 }
-.cta:hover::after { left: 130%; }
-.cta:active { transform: scale(0.97); }
+/* touch: a short, honest press feedback — no lingering "held" state */
+@media (hover: none) {
+  .cta:active { filter: brightness(0.93); }
+}
 .cta:disabled,
 .cta[aria-disabled='true'] {
   opacity: 0.4;
@@ -156,6 +268,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  min-height: 46px;
   color: var(--text);
   background: none;
   text-decoration: none;
@@ -167,10 +280,15 @@ button {
     background 0.2s ease,
     transform 0.14s ease;
 }
-.ghost:hover {
-  border-color: var(--brand-blue);
-  background: rgba(41, 171, 226, 0.08);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .ghost:hover {
+    border-color: var(--brand-blue);
+    background: rgba(41, 171, 226, 0.08);
+    transform: translateY(-2px);
+  }
+}
+@media (hover: none) {
+  .ghost:active { background: rgba(41, 171, 226, 0.1); }
 }
 .ghost:focus-visible {
   outline: none;
@@ -194,8 +312,10 @@ button {
   background: linear-gradient(90deg, var(--brand-blue), var(--octane-500), var(--brand-red));
   transition: width 0.28s var(--ease);
 }
-.navlink:hover { color: #fff; }
-.navlink:hover::after { width: 100%; }
+@media (hover: hover) and (pointer: fine) {
+  .navlink:hover { color: #fff; }
+  .navlink:hover::after { width: 100%; }
+}
 .navlink[aria-current='page'] { color: #fff; }
 .navlink[aria-current='page']::after { width: 100%; }
 
@@ -212,6 +332,7 @@ button {
     box-shadow 0.34s ease,
     background 0.34s ease;
 }
+/* accent rail along the top — draws itself in on reveal, then on hover */
 .card::before {
   content: '';
   position: absolute;
@@ -235,26 +356,52 @@ button {
   pointer-events: none;
   z-index: 4;
 }
-.card:hover {
-  transform: translateY(-9px);
-  background: var(--surface-2);
+/* the rail + a single light sweep play once as the card arrives */
+.card[data-reveal].tp-in::before {
+  animation: tp-card-rail 0.9s var(--ease-out-soft) both;
+  animation-delay: calc(var(--tp-delay, 0ms) + 220ms);
 }
-.card:hover::after { left: 135%; }
-.card:hover::before { width: 100%; }
+.card[data-reveal].tp-in::after {
+  animation: tp-card-sheen 1.15s ease;
+  animation-delay: calc(var(--tp-delay, 0ms) + 180ms);
+}
+@keyframes tp-card-rail {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes tp-card-sheen {
+  from { left: -35%; }
+  to { left: 135%; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: translateY(-9px);
+    background: var(--surface-2);
+  }
+  .card:hover::after { left: 135%; }
+  .card:hover::before { width: 100%; }
+}
 .card--amber::before { background: linear-gradient(90deg, var(--octane-300), var(--octane-500)); }
-.card--amber:hover {
-  border-color: rgba(255, 158, 27, 0.5);
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(255, 158, 27, 0.14);
-}
 .card--blue::before { background: linear-gradient(90deg, var(--brand-blue), #2e3192); }
-.card--blue:hover {
-  border-color: rgba(41, 171, 226, 0.5);
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(41, 171, 226, 0.16);
-}
 .card--red::before { background: linear-gradient(90deg, var(--brand-red), #8d2428); }
-.card--red:hover {
-  border-color: rgba(237, 28, 36, 0.5);
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(237, 28, 36, 0.16);
+@media (hover: hover) and (pointer: fine) {
+  .card--amber:hover {
+    border-color: rgba(255, 158, 27, 0.5);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(255, 158, 27, 0.14);
+  }
+  .card--blue:hover {
+    border-color: rgba(41, 171, 226, 0.5);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(41, 171, 226, 0.16);
+  }
+  .card--red:hover {
+    border-color: rgba(237, 28, 36, 0.5);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.55), 0 8px 40px rgba(237, 28, 36, 0.16);
+  }
+}
+/* on touch the rail is part of the card's identity, so keep it drawn */
+@media (hover: none) {
+  .card.tp-in::before { width: 100%; }
 }
 
 /* ---------- chips & pills ---------- */
@@ -282,11 +429,13 @@ button.chip {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-button.chip:hover:not(:disabled) {
-  background: var(--surface-3);
-  border-color: var(--octane-500);
-  color: var(--text);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  button.chip:hover:not(:disabled) {
+    background: var(--surface-3);
+    border-color: var(--octane-500);
+    color: var(--text);
+    transform: translateY(-1px);
+  }
 }
 button.chip:focus-visible {
   outline: none;
@@ -316,6 +465,13 @@ button.chip:disabled {
   padding: 4px 11px;
   border-radius: var(--r-pill);
 }
+.pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
 .pill--success { color: var(--status-success); background: var(--status-success-bg); border: 1px solid rgba(52, 211, 153, 0.35); }
 .pill--pending { color: var(--status-pending); background: var(--status-pending-bg); border: 1px solid rgba(251, 191, 36, 0.35); }
 .pill--warning { color: var(--status-warning); background: var(--status-warning-bg); border: 1px solid rgba(248, 113, 113, 0.35); }
@@ -331,6 +487,7 @@ button.chip:disabled {
 }
 .section-tag__line {
   width: 40px;
+  flex: none;
   height: 2px;
   background: linear-gradient(90deg, var(--brand-blue), var(--brand-red));
 }
@@ -351,6 +508,7 @@ input[type='range'].rng {
   border-radius: var(--r-pill);
   outline: none;
   cursor: pointer;
+  touch-action: pan-y; /* dragging the thumb must not scroll the page */
   background: linear-gradient(90deg, #05080d, #9aa3af 75%, #dbe3ec);
 }
 input[type='range'].rng::-webkit-slider-thumb {
@@ -385,6 +543,7 @@ input[type='range'].rng--octane::-moz-range-thumb {
 /* ---------- forms ---------- */
 .field {
   width: 100%;
+  max-width: 100%;
   background: var(--surface-inset);
   border: 1px solid var(--border-subtle);
   border-radius: var(--r-md);
@@ -393,8 +552,6 @@ input[type='range'].rng--octane::-moz-range-thumb {
   font-size: 14px;
   padding: 11px 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.field {
   color-scheme: dark;
 }
 .field::-webkit-calendar-picker-indicator {
@@ -408,6 +565,17 @@ input[type='range'].rng--octane::-moz-range-thumb {
   box-shadow: var(--focus-ring);
 }
 .field::placeholder { color: var(--text-faint); }
+
+/* iOS Safari zooms the viewport on focus for any control under 16px and never
+   zooms back out — so on phones every control is 16px. */
+@media (max-width: 860px) {
+  .field,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
 
 /* ---------- scrollbar ---------- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

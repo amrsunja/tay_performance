@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import DevCard from '../../components/ui/DevCard'
 import type { ResolvedVehicle } from '../../types/api'
 import { formatDuration, formatEuro, type DraftAction, type DraftState } from './useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './booking.module.css'
 
 interface StepProps {
@@ -42,7 +43,7 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
     <section className={styles.stepConfirm}>
       <div className={styles.confirmInner}>
         <div className={styles.confirmBadge} aria-hidden>
-          <span style={{ fontSize: 38 }}>✓</span>
+          <Icon name="check" size={40} strokeWidth={2.2} />
         </div>
         <div className={`mono ${styles.confirmKicker}`}>
           {booking.old_reference ? 'Rendez-vous reprogrammé' : 'Demande envoyée'}
@@ -94,7 +95,7 @@ export default function ConfirmStep({ state, dispatch, vehicle }: StepProps) {
               className="ghost"
               style={{ fontSize: 13, padding: '11px 18px', borderRadius: 11, display: 'inline-block' }}
             >
-              Sécuriser mon compte par SMS →
+              Sécuriser mon compte par SMS <Icon name="arrow-right" size={15} />
             </Link>
           </div>
         )}

@@ -12,6 +12,7 @@ import { errorMessage, supabase } from '../../lib/supabase'
 import type { MyBookingRow } from '../../types/api'
 import type { BookingStatus } from '../../types/domain'
 import { formatDuration, formatEuro, formatPrice } from '../booking/useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './portal.module.css'
 import { useSeo } from '../../lib/seo'
 
@@ -155,7 +156,7 @@ function BookingCard({
         ))}
         {booking.warrantyYears && (
           <span className="pill pill--success">
-            <span aria-hidden>✓</span> Garantie {booking.warrantyYears} ans
+            <Icon name="check" size={12} /> Garantie {booking.warrantyYears} ans
           </span>
         )}
       </div>
@@ -334,10 +335,10 @@ export default function BookingsPage() {
               className="ghost"
               style={{ fontSize: 13, padding: '11px 18px', borderRadius: 11, justifySelf: 'start' }}
             >
-              Se connecter par SMS →
+              Se connecter par SMS <Icon name="arrow-right" size={15} />
             </Link>
             <Link to="/reserver" className="cta" style={{ fontSize: 14, padding: '12px 20px', borderRadius: 12, justifySelf: 'start' }}>
-              Réserver une pose →
+              Réserver une pose <Icon name="arrow-right" size={15} />
             </Link>
           </div>
         )}

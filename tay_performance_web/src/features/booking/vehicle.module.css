@@ -25,8 +25,10 @@
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
-.crumb:hover {
-  border-color: var(--octane-500);
+@media (hover: hover) and (pointer: fine) {
+  .crumb:hover {
+    border-color: var(--octane-500);
+  }
 }
 .crumbSep {
   color: var(--text-dim);
@@ -35,7 +37,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -44,6 +46,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+  min-width: 0;
+  min-height: 64px;
   padding: 16px;
   border-radius: 14px;
   border: 1px solid var(--border-subtle);
@@ -52,15 +56,26 @@
   text-align: left;
   transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
 }
-.card:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    background: var(--surface-3);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+}
+@media (hover: none) {
+  .card:active {
+    background: var(--surface-2);
+  }
 }
 .cardName {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .cardMeta {
   font-size: 11px;
@@ -111,31 +126,39 @@
   display: flex;
   align-items: center;
 }
+/* the icon lives in a fixed box so it cannot drift with font metrics
+   (it used to be a bare ⌕ glyph, which is plain tofu in several mobile fonts) */
 .searchIcon {
   position: absolute;
-  left: 16px;
-  font-size: 18px;
+  left: 15px;
+  display: grid;
+  place-items: center;
   color: var(--text-dim);
   pointer-events: none;
 }
 .searchInput {
-  padding: 15px 44px 15px 44px;
+  padding: 15px 52px 15px 44px;
   font-size: 16px;
   border-radius: 16px;
   border-color: var(--border-strong);
 }
 .searchClear {
   position: absolute;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  place-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   border: none;
   background: var(--surface-2);
   color: var(--text-dim);
   cursor: pointer;
 }
-.searchClear:hover { color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  .searchClear:hover { color: var(--text); }
+}
 
 .hits {
   display: grid;
@@ -153,10 +176,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 .hitTitle {
   font-size: 16px;
   color: var(--text);
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -228,4 +253,51 @@
 }
 .fallbackCompact {
   padding: 12px 14px;
+}
+
+/* ---------- load failure ---------- */
+.loadError {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.07);
+  color: #fca5a5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.loadErrorRetry {
+  margin-top: 8px;
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--accent-300);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .wrap {
+    gap: 18px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
+    gap: 8px;
+  }
+  .card {
+    padding: 13px 12px;
+  }
+  .crumb {
+    padding: 9px 12px;
+  }
+  .hit {
+    padding: 14px 13px;
+  }
+  .searchInput {
+    border-radius: 14px;
+  }
 }

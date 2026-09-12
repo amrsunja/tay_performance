@@ -22,6 +22,7 @@ import { errorMessage } from '../../lib/supabase'
 import { formatPhoneDisplay } from '../../lib/phone'
 import type { ResolvedVehicle, VehicleRequestRow } from '../../types/api'
 import type { BodyStyleCode } from '../../types/domain'
+import Icon from '../../components/ui/Icon'
 import styles from './admin.module.css'
 
 type VariantEdit = { minutes: string; notes: string }
@@ -273,7 +274,7 @@ export default function VehiclesPage() {
                     {rowEditor(row)}
                     <td>
                       <span className="pill pill--success">
-                        <span aria-hidden>✓</span> Actif
+                        <Icon name="check" size={12} /> Actif
                       </span>
                     </td>
                   </tr>
@@ -294,7 +295,7 @@ export default function VehiclesPage() {
                       >
                         {v.isActive ? (
                           <span className="pill pill--success">
-                            <span aria-hidden>✓</span> Actif
+                            <Icon name="check" size={12} /> Actif
                           </span>
                         ) : (
                           <span className="pill pill--muted">
@@ -363,12 +364,12 @@ export default function VehiclesPage() {
                       .catch((e) => setError(errorMessage(e)))
                   }
                 >
-                  ✕
+                  <Icon name="close" size={14} />
                 </button>
               </div>
             ) : lead.status === 'resolved' ? (
               <span className="pill pill--success">
-                <span aria-hidden>✓</span> Résolu
+                <Icon name="check" size={12} /> Résolu
               </span>
             ) : (
               <span className="pill pill--muted">
@@ -401,7 +402,7 @@ export default function VehiclesPage() {
         }}
       >
         <span className="mono" style={{ fontSize: 13, color: dirtyCount ? 'var(--octane-300)' : 'var(--text-dim)' }}>
-          {saved ? '✓ Enregistré' : dirtyCount ? `${dirtyCount} modification${dirtyCount > 1 ? 's' : ''} en attente` : 'Aucune modification'}
+          {saved ? 'Enregistré' : dirtyCount ? `${dirtyCount} modification${dirtyCount > 1 ? 's' : ''} en attente` : 'Aucune modification'}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           {dirtyCount > 0 && (

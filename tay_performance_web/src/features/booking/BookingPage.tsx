@@ -70,7 +70,7 @@ export default function BookingPage() {
               </span>
             ))}
           </div>
-          <a href="tel:0605505028" className="navlink" style={{ fontSize: 14 }}>
+          <a href="tel:0605505028" className={`navlink ${styles.headerPhone}`}>
             06 05 50 50 28
           </a>
         </div>
@@ -85,7 +85,7 @@ export default function BookingPage() {
                 <span className={`mono ${styles.kicker}`}>Étape 1 · Votre véhicule</span>
               </div>
               <h1 className={`clash ${styles.h1}`}>
-                Quel véhicule teinter<span style={{ color: 'var(--accent-500)' }}> ?</span>
+                Quel véhicule teinter<span style={{ color: 'var(--accent-500)' }}>&nbsp;?</span>
               </h1>
               <p className={styles.lede}>
                 Marque → modèle → génération → carrosserie. La carrosserie détermine la surface vitrée, le prix et la

@@ -21,6 +21,7 @@ import { photoUrl } from '../../api/bookings'
 import { errorMessage } from '../../lib/supabase'
 import { formatPhoneDisplay } from '../../lib/phone'
 import type { BookingStatus } from '../../types/domain'
+import Icon from '../../components/ui/Icon'
 import { formatDuration, formatEuro } from '../booking/useBookingDraft'
 
 const NEXT_STATUSES: Record<string, BookingStatus[]> = {
@@ -41,9 +42,9 @@ const BACK_STATUSES: Record<string, BookingStatus[]> = {
   no_show: ['confirmed'],
 }
 const BACK_LABELS: Record<string, string> = {
-  requested: '← Remettre en attente',
-  confirmed: '← Revenir à confirmé',
-  in_progress: '← Rouvrir la pose',
+  requested: 'Remettre en attente',
+  confirmed: 'Revenir à confirmé',
+  in_progress: 'Rouvrir la pose',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -84,7 +85,7 @@ function PhotoThumb({ path, onDelete }: { path: string; onDelete: () => void }) 
           border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', cursor: 'pointer', fontSize: 11,
         }}
       >
-        ✕
+        <Icon name="close" size={16} />
       </button>
     </div>
   )
@@ -183,7 +184,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
             onClick={onClose}
             style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--border-subtle)', background: 'var(--surface-2)', color: 'var(--text-dim)', cursor: 'pointer' }}
           >
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </div>
 
@@ -200,7 +201,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                 <StatusPill status={b.status} />
                 {b.legalFlag === 'non_compliant_ack' && (
                   <span className="pill pill--warning">
-                    <span aria-hidden>⚠</span> Hors conformité (ack client)
+                    <Icon name="warning" size={13} /> Hors conformité (ack client)
                   </span>
                 )}
                 <span className="mono" style={{ marginLeft: 'auto', fontSize: 17, color: b.priceTotal == null ? 'var(--octane-300)' : 'var(--text-hi)' }}>
@@ -255,7 +256,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                   className="chip"
                   style={!s.isLegal ? { borderColor: 'rgba(248,113,113,.5)', color: 'var(--status-warning)' } : undefined}
                 >
-                  {zoneShort(s.zone)} {s.vltPercent}%{!s.isLegal && ' ⚠'}
+                  {zoneShort(s.zone)} {s.vltPercent}%{!s.isLegal && <Icon name="warning" size={11} />}
                 </span>
               ))}
             </div>
@@ -462,7 +463,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                   disabled={warrantyMutation.isPending}
                   onClick={() => warrantyMutation.mutate()}
                 >
-                  {warrantyMutation.isSuccess ? '✓ Émise' : 'Émettre'}
+                  {warrantyMutation.isSuccess ? 'Émise' : 'Émettre'}
                 </button>
               </div>
             )}

@@ -10,6 +10,7 @@ import { addVehicle, deleteVehicle, getMyVehicles, updateVehicle } from '../../a
 import VehicleFunnel from '../booking/VehicleStep'
 import type { GarageVehicle, ResolvedVehicle } from '../../types/api'
 import { errorMessage } from '../../lib/supabase'
+import Icon from '../../components/ui/Icon'
 import styles from './portal.module.css'
 import { useSeo } from '../../lib/seo'
 
@@ -136,7 +137,7 @@ export default function GaragePage() {
                   className="cta"
                   style={{ fontSize: 14, padding: '12px 20px', borderRadius: 12 }}
                 >
-                  Réserver une pose →
+                  Réserver une pose <Icon name="arrow-right" size={15} />
                 </Link>
                 <button
                   type="button"

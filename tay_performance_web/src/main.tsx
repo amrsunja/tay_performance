@@ -10,6 +10,9 @@ import { queryClient } from './lib/queryClient'
 
 const rootEl = document.getElementById('root')!
 rootEl.dataset.tayMounted = '1'
+// tells base.css that the scroll-reveal script is alive, so [data-reveal] may
+// start at opacity 0 (without it, content would stay hidden if the bundle died)
+document.documentElement.classList.add('tp-reveal-ready')
 
 createRoot(rootEl).render(
   <StrictMode>

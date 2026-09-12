@@ -12,6 +12,7 @@ import PhoneInput from '../../components/ui/PhoneInput'
 import type { ResolvedVehicle, SlotInfo } from '../../types/api'
 import { dayLabel, getMonth } from './calendar'
 import { formatDuration, formatEuro, formatPrice, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './booking.module.css'
 
 interface StepProps {
@@ -229,7 +230,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
             style={{ fontSize: 14, fontWeight: 500, padding: '13px 20px', borderRadius: 12 }}
             onClick={backToConfig}
           >
-            ← Modifier la configuration
+            <Icon name="arrow-left" size={15} /> Modifier la configuration
           </button>
         </div>
 
@@ -523,7 +524,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                   onClick={() => confirmMutation.mutate()}
                 >
                   {confirmMutation.isPending ? 'Confirmation…' : 'Confirmer le rendez-vous'}{' '}
-                  <span style={{ fontSize: 18 }}>→</span>
+                  <Icon name="arrow-right" size={18} />
                 </button>
               </div>
             )}

@@ -1,5 +1,5 @@
 .page {
-  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--bg-canvas);
@@ -8,9 +8,10 @@
 .main {
   flex: 1;
   width: 100%;
+  min-width: 0;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 52px 32px 90px;
+  padding: 52px max(32px, env(safe-area-inset-left)) 90px;
 }
 
 .head {
@@ -45,6 +46,7 @@
 .h1 {
   font-weight: 600;
   font-size: 44px;
+  text-wrap: balance;
   line-height: 1;
   letter-spacing: -0.02em;
   margin: 0;
@@ -65,6 +67,7 @@
   background: var(--surface-inset);
   border-radius: 13px;
   padding: 5px;
+  max-width: 100%;
 }
 
 .tab {
@@ -77,8 +80,10 @@
   transition: all 0.18s;
 }
 
-.tab:hover {
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  .tab:hover {
+    color: #fff;
+  }
 }
 
 .tabActive {
@@ -90,7 +95,7 @@
 /* ---------- garage ---------- */
 .vehicleGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 20px;
 }
 
@@ -102,10 +107,12 @@
   transition: transform 0.3s var(--ease), border-color 0.3s, background 0.3s;
 }
 
-.vehicleCard:hover {
-  transform: translateY(-6px);
-  border-color: var(--border-strong);
-  background: var(--surface-1);
+@media (hover: hover) and (pointer: fine) {
+  .vehicleCard:hover {
+    transform: translateY(-6px);
+    border-color: var(--border-strong);
+    background: var(--surface-1);
+  }
 }
 
 .vehicleTop {
@@ -191,9 +198,11 @@
   padding: 24px;
 }
 
-.addCard:hover {
-  border-color: var(--accent-500);
-  background: rgba(41, 171, 226, 0.05);
+@media (hover: hover) and (pointer: fine) {
+  .addCard:hover {
+    border-color: var(--accent-500);
+    background: rgba(41, 171, 226, 0.05);
+  }
 }
 
 .addGhostCar {
@@ -339,6 +348,7 @@
 
 .photoRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
 }
@@ -348,8 +358,11 @@
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  width: 150px;
-  height: 96px;
+  /* fluid, so two before/after shots always fit a phone row instead of
+     pushing the booking card into a sideways scroll */
+  flex: 1 1 140px;
+  max-width: 190px;
+  aspect-ratio: 25 / 16;
   border: 1px solid var(--border-subtle);
 }
 
@@ -388,24 +401,98 @@
   opacity: 0.85;
 }
 
-.dangerLink:hover {
-  opacity: 1;
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .dangerLink:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
 }
 
 @media (max-width: 720px) {
   .main {
-    padding: 36px 16px 60px;
+    padding: 34px max(18px, env(safe-area-inset-left)) calc(56px + env(safe-area-inset-bottom));
   }
   .h1 {
-    font-size: 32px;
+    font-size: 31px;
+  }
+  .head {
+    gap: 18px;
+    margin-bottom: 26px;
+  }
+  /* the tab strip scrolls sideways on one axis instead of squeezing or wrapping */
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex: 1 0 auto;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .vehicleGrid {
+    gap: 14px;
+  }
+  .vehicleCard,
+  .bookingCard {
+    padding: 18px 16px;
+    border-radius: 16px;
+  }
+  .vehicleTitle {
+    font-size: 19px;
+  }
+  .vehicleSpecs {
+    gap: 14px;
+  }
+  .vehicleActions > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .addCard {
+    min-height: 190px;
+  }
+  .bookingHead {
+    gap: 12px;
+  }
+  .bookingHeadRight {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .bookingTitle {
+    font-size: 18px;
+  }
+  .bookingPrice {
+    font-size: 21px;
+  }
+  .timelineBar {
+    width: 20px;
+    margin-right: 6px;
+  }
+  .timelineLabel {
+    margin: 0 6px 0 5px;
+  }
+  .bookingActions {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .groupTitle {
+    margin: 26px 0 12px;
+    font-size: 13.5px;
   }
 }
 
 /* ---------- /adresse ---------- */
 .addressGrid {
   display: grid;
-  grid-template-columns: minmax(300px, 420px) 1fr;
+  grid-template-columns: minmax(min(300px, 100%), 420px) 1fr;
   gap: 22px;
   align-items: stretch;
 }
@@ -430,9 +517,11 @@
   text-decoration: none;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.addressLink:hover {
-  border-color: var(--octane-500);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .addressLink:hover {
+    border-color: var(--octane-500);
+    transform: translateY(-1px);
+  }
 }
 .addressPin {
   display: grid;
@@ -514,18 +603,23 @@
   .addressGrid {
     grid-template-columns: 1fr;
   }
+  /* was: a stray copy of .mapCta's rules landed on .mapCard, which made the
+     whole map `position: absolute` and float over the address card on phones */
   .mapCard,
+  .mapFrame {
+    min-height: 300px;
+  }
+  .addressCard {
+    padding: 20px 18px;
+    gap: 18px;
+  }
+  .addressStreet {
+    font-size: 16px;
+  }
   .mapCta {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  font-size: 13px;
-  padding: 10px 16px;
-  border-radius: 11px;
-  background: rgba(10, 12, 15, 0.82);
-  backdrop-filter: blur(6px);
-}
-.mapFrame {
-    min-height: 320px;
+    right: 10px;
+    bottom: 10px;
+    font-size: 12.5px;
+    padding: 9px 13px;
   }
 }

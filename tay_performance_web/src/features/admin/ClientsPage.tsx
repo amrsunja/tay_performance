@@ -162,7 +162,7 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
           disabled={saveMutation.isPending}
           onClick={() => saveMutation.mutate()}
         >
-          {saveMutation.isSuccess ? '✓ Enregistré' : 'Enregistrer'}
+          {saveMutation.isSuccess ? 'Enregistré' : 'Enregistrer'}
         </button>
 
         <div className="sat" style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: 8 }}>

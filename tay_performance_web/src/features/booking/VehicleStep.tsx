@@ -26,6 +26,7 @@ import { getMyProfile } from '../../api/profile'
 import { isValidEmail } from '../../api/auth'
 import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
+import Icon from '../../components/ui/Icon'
 import type { GenerationRow, MakeRow, ModelRow, ResolvedVehicle, VehicleSearchHit } from '../../types/api'
 import type { BodyStyleCode } from '../../types/domain'
 import styles from './vehicle.module.css'
@@ -133,14 +134,22 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
   const allBodies = bodyStyles.data ?? []
   const searching = dq.length >= 2
 
+  // any of the public catalog reads failing means the funnel cannot work at all
+  const loadError = (searching ? search.error : makes.error) ?? bodyStyles.error ?? null
+  const retryLoad = () => {
+    void bodyStyles.refetch()
+    if (searching) void search.refetch()
+    else void makes.refetch()
+  }
+
   return (
     <div className={styles.wrap}>
       {!hideRequest && <RequestBlock compact={compact} />}
 
       {/* ---------- search ---------- */}
       <div className={styles.searchBox}>
-        <span className={styles.searchIcon} aria-hidden>
-          ⌕
+        <span className={styles.searchIcon}>
+          <Icon name="search" size={18} />
         </span>
         <input
           className={`field ${styles.searchInput}`}
@@ -155,7 +164,7 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
         />
         {q && (
           <button type="button" className={styles.searchClear} aria-label="Effacer" onClick={() => setQ('')}>
-            ✕
+            <Icon name="close" size={16} />
           </button>
         )}
       </div>
@@ -164,6 +173,21 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
         <span style={{ color: 'var(--status-warning)', fontSize: 13 }} role="alert">
           {error}
         </span>
+      )}
+
+      {/* A failed catalog read used to render an empty "parcourez par marque" grid
+          with no explanation — the exact symptom of the 401 Invalid API key
+          incident. Never fail silently again. */}
+      {loadError && (
+        <div className={styles.loadError} role="alert">
+          <Icon name="warning" size={18} />
+          <span>
+            Impossible de charger le catalogue véhicules. {errorMessage(loadError)}
+            <button type="button" className={styles.loadErrorRetry} onClick={retryLoad}>
+              Réessayer
+            </button>
+          </span>
+        </div>
       )}
 
       {searching ? (
@@ -196,14 +220,14 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
             <div className={styles.crumbs}>
               {make && (
                 <button type="button" className={styles.crumb} onClick={() => reset('make')}>
-                  {make.name} <span aria-hidden>✕</span>
+                  {make.name} <Icon name="close" size={13} />
                 </button>
               )}
               {model && (
                 <>
                   <span className={styles.crumbSep}>›</span>
                   <button type="button" className={styles.crumb} onClick={() => reset('model')}>
-                    {model.name} <span aria-hidden>✕</span>
+                    {model.name} <Icon name="close" size={13} />
                   </button>
                 </>
               )}
@@ -211,7 +235,7 @@ export default function VehicleFunnel({ onResolved, compact, hideRequest }: Vehi
                 <>
                   <span className={styles.crumbSep}>›</span>
                   <button type="button" className={styles.crumb} onClick={() => reset('generation')}>
-                    {generationLabel(generation)} <span aria-hidden>✕</span>
+                    {generationLabel(generation)} <Icon name="close" size={13} />
                   </button>
                 </>
               )}
@@ -522,13 +546,13 @@ function RequestBlock({ compact }: { compact?: boolean }) {
           Je ne trouve pas mon véhicule
         </span>
         <span className={`mono ${styles.fallbackHint}`}>
-          {state === 'sent' ? '✓ envoyé' : open ? 'réduire' : 'signaler →'}
+          {state === 'sent' ? 'envoyé' : open ? 'réduire' : 'signaler →'}
         </span>
       </button>
       {open &&
         (state === 'sent' ? (
           <span style={{ color: 'var(--status-success)', fontSize: 14 }}>
-            ✓ Merci — on ajoute votre véhicule et on vous recontacte
+            Merci — on ajoute votre véhicule et on vous recontacte
             {session && !isAnonymous ? ' sur votre compte' : ''}.
           </span>
         ) : (

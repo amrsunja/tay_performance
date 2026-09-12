@@ -14,6 +14,24 @@ npm run dev
 
 Requires the backend stack to be up (`cd ../backend && supabase start && supabase db reset`).
 
+## Environment variables (and the 401 trap)
+
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are inlined at **build** time, so they
+must be correct wherever the bundle is built (locally, or in the host's build step).
+
+They are **case-sensitive**. A deploy once shipped them upper-cased
+(`SB_PUBLISHABLE_YPARSX…`), Supabase answered `401 Invalid API key` to every REST
+call, and the booking funnel rendered an empty vehicle catalog with no error.
+Guards now in place:
+
+- `src/lib/supabaseConfig.ts` validates the URL and the key format and falls back to
+  the checked-in **public** project values when the env is missing or malformed
+  (it also lower-cases the host and refuses anything starting with `sb_secret_`).
+- `errorMessage()` maps `Invalid API key` / 401 to explicit French copy.
+- The vehicle funnel renders a retryable error banner instead of an empty grid.
+
+After changing deploy env vars, rebuild — editing them without a rebuild changes nothing.
+
 ## Auth model
 
 - **Clients:** anonymous Supabase sessions, minted lazily on the first identity-requiring action

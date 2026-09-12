@@ -4,6 +4,7 @@
    The automated Instagram feed will replace the static list later. */
 import { useRef, useState } from 'react'
 import SectionTag from '../../components/ui/SectionTag'
+import Icon from '../../components/ui/Icon'
 import video1 from '../../assets/videos/video1.mp4'
 import video2 from '../../assets/videos/video2.mp4'
 import video3 from '../../assets/videos/video3.mp4'
@@ -24,22 +25,6 @@ function InstagramIcon() {
       <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" />
       <circle cx="12" cy="12" r="4.4" />
       <circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-function SpeakerIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" stroke="none" />
-      {muted ? (
-        <path d="M16 9l5 6M21 9l-5 6" />
-      ) : (
-        <>
-          <path d="M15.5 9.2a4 4 0 0 1 0 5.6" />
-          <path d="M18.3 6.5a8 8 0 0 1 0 11" />
-        </>
-      )}
     </svg>
   )
 }
@@ -153,7 +138,7 @@ export default function SocialSection() {
 
         <div data-reveal className={styles.socialSliderWrap}>
           <button type="button" className={styles.socialArrow} aria-label="Précédent" onClick={() => scrollBy(-1)}>
-            ‹
+            <Icon name="chevron-left" size={19} />
           </button>
 
           <div ref={sliderRef} className={styles.socialSlider}>
@@ -191,7 +176,9 @@ export default function SocialSection() {
                   style={{ opacity: playing === i ? 0 : 1 }}
                   aria-hidden
                 >
-                  <span className={styles.socialVideoPlay}>▶</span>
+                  <span className={styles.socialVideoPlay}>
+                    <Icon name={playing === i ? 'pause' : 'play'} size={22} />
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -203,14 +190,14 @@ export default function SocialSection() {
                     toggleMute(i)
                   }}
                 >
-                  <SpeakerIcon muted={muted[i]} />
+                  <Icon name={muted[i] ? 'volume-off' : 'volume'} size={17} />
                 </button>
               </div>
             ))}
           </div>
 
           <button type="button" className={styles.socialArrow} aria-label="Suivant" onClick={() => scrollBy(1)}>
-            ›
+            <Icon name="chevron-right" size={19} />
           </button>
         </div>
 

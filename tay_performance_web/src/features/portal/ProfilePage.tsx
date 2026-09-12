@@ -15,6 +15,7 @@ import PhoneInput from '../../components/ui/PhoneInput'
 import { formatPhoneDisplay, normalizePhone } from '../../lib/phone'
 import { errorMessage } from '../../lib/supabase'
 import { formatPrice } from '../booking/useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './portal.module.css'
 import { useSeo } from '../../lib/seo'
 
@@ -142,7 +143,7 @@ export default function ProfilePage() {
                   {formatPhoneDisplay(profile.data?.phone) || '—'}
                 </span>
                 <span className="pill pill--success">
-                  <span aria-hidden>✓</span> Vérifié
+                  <Icon name="check" size={12} /> Vérifié
                 </span>
               </div>
             )}
@@ -158,7 +159,7 @@ export default function ProfilePage() {
               disabled={saveMutation.isPending}
               onClick={() => saveMutation.mutate()}
             >
-              {saveMutation.isPending ? 'Enregistrement…' : saveMutation.isSuccess ? '✓ Enregistré' : 'Enregistrer'}
+              {saveMutation.isPending ? 'Enregistrement…' : saveMutation.isSuccess ? 'Enregistré' : 'Enregistrer'}
             </button>
           </section>
 
@@ -178,7 +179,7 @@ export default function ProfilePage() {
                   className="cta"
                   style={{ fontSize: 14, padding: '13px 22px', borderRadius: 12, justifySelf: 'start' }}
                 >
-                  Se connecter par SMS →
+                  Se connecter par SMS <Icon name="arrow-right" size={15} />
                 </Link>
               </>
             ) : (
@@ -222,7 +223,7 @@ export default function ProfilePage() {
                 </span>
               </span>
               <Link to={`/reserver?vehicle=${v.vehicleId}`} className="ghost" style={{ fontSize: 13, padding: '9px 14px', borderRadius: 10 }}>
-                Réserver →
+                Réserver <Icon name="arrow-right" size={15} />
               </Link>
             </div>
           ))}
@@ -232,7 +233,7 @@ export default function ProfilePage() {
             </span>
           )}
           <Link to="/garage" className="navlink" style={{ fontSize: 13 }}>
-            Gérer mon garage →
+            Gérer mon garage <Icon name="arrow-right" size={15} />
           </Link>
         </div>
 
@@ -261,7 +262,7 @@ export default function ProfilePage() {
             <span className="mono" style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune réservation pour l'instant.</span>
           )}
           <Link to="/reservations" className="navlink" style={{ fontSize: 13 }}>
-            Voir le détail des réservations →
+            Voir le détail des réservations <Icon name="arrow-right" size={15} />
           </Link>
         </div>
       </main>

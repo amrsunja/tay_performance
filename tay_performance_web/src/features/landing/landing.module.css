@@ -32,19 +32,20 @@
 }
 
 .section {
-  padding: 110px 56px;
+  padding: 110px max(56px, env(safe-area-inset-left));
   background: var(--bg-canvas);
   border-top: 1px solid var(--surface-1);
 }
 
 .sectionAlt {
-  padding: 110px 56px;
+  padding: 110px max(56px, env(safe-area-inset-left));
   background: var(--bg-base);
 }
 
 .h2 {
   font-weight: 600;
   font-size: 46px;
+  text-wrap: balance;
   letter-spacing: -0.015em;
   color: var(--text-hi);
   margin: 12px 0 0;
@@ -53,7 +54,9 @@
 /* ============ hero ============ */
 .hero {
   position: relative;
-  min-height: 880px;
+  /* svh, not vh: on mobile Safari `vh` counts the collapsed toolbar, so a 880px
+     hero pushed the stat band off-screen and left a dead gap under the fold */
+  min-height: min(880px, 100svh + 120px);
   overflow: hidden;
   background: var(--bg-canvas);
   display: flex;
@@ -141,12 +144,13 @@
   width: 100%;
   max-width: 1310px;
   margin: 0 auto;
-  padding: 150px 56px 220px;
+  padding: 150px max(56px, env(safe-area-inset-left)) 220px;
 }
 
 .heroTitle {
   font-weight: 600;
   font-size: 88px;
+  text-wrap: balance;
   line-height: 0.96;
   letter-spacing: -0.025em;
   color: var(--text-hi);
@@ -195,7 +199,8 @@
 }
 
 .scrollHintArrow {
-  font-size: 18px;
+  display: grid;
+  place-items: center;
   color: var(--accent-500);
   animation: tp-bob 1.8s ease-in-out infinite;
 }
@@ -208,6 +213,7 @@
   z-index: 4;
   width: 100%;
   display: flex;
+  padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid rgba(37, 45, 56, 0.8);
   background: rgba(12, 15, 19, 0.66);
   backdrop-filter: blur(10px);
@@ -216,6 +222,7 @@
 
 .stat {
   flex: 1;
+  min-width: 0;
   padding: 24px 40px;
   border-right: 1px solid rgba(37, 45, 56, 0.8);
 }
@@ -225,8 +232,12 @@
 }
 
 .statValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
   font-size: 36px;
+  line-height: 1.1;
   color: var(--text-hi);
 }
 
@@ -234,6 +245,7 @@
   font-size: 12px;
   color: var(--text-dim);
   letter-spacing: 0.04em;
+  line-height: 1.3;
   margin-top: 4px;
 }
 
@@ -257,6 +269,16 @@
   color: #1f2733;
   white-space: nowrap;
   animation: marquee-scroll 36s linear infinite;
+  will-change: transform;
+}
+
+.marqueeDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin: 0 22px;
+  background: currentColor;
 }
 
 .marqueeCopy {
@@ -271,8 +293,8 @@
 }
 
 @keyframes marquee-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 
 /* ============ services ============ */
@@ -282,6 +304,15 @@
   justify-content: space-between;
   margin-bottom: 48px;
   gap: 24px;
+  flex-wrap: wrap;
+}
+
+.sectionHeadLink {
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .servicesGrid {
@@ -408,9 +439,20 @@
   transition: color 0.3s ease, transform 0.3s var(--ease);
 }
 
-.stepCard:hover .stepNum {
-  color: var(--accent-500);
-  transform: translateY(-4px);
+@media (hover: hover) and (pointer: fine) {
+  .stepCard:hover .stepNum {
+    color: var(--accent-500);
+    transform: translateY(-4px);
+  }
+}
+/* the big number slides up behind the title as the card arrives */
+.stepCard[data-reveal].tp-in .stepNum {
+  animation: tp-stepnum 0.9s var(--ease-out-soft) both;
+  animation-delay: calc(var(--tp-delay, 0ms) + 120ms);
+}
+@keyframes tp-stepnum {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); letter-spacing: -0.04em; }
+  to { opacity: 1; transform: none; letter-spacing: normal; }
 }
 
 /* ============ gallery ============ */
@@ -439,8 +481,10 @@
   transition: opacity 0.4s ease;
 }
 
-.galItem:hover::before {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .galItem:hover::before {
+    opacity: 1;
+  }
 }
 
 .galBig {
@@ -463,9 +507,21 @@
   transition: transform 0.6s var(--ease), filter 0.5s ease;
 }
 
-.galItem:hover .galImg {
-  transform: scale(1.08);
-  filter: saturate(1.12) contrast(1.04);
+@media (hover: hover) and (pointer: fine) {
+  .galItem:hover .galImg {
+    transform: scale(1.08);
+    filter: saturate(1.12) contrast(1.04);
+  }
+}
+/* the image settles back from a slight over-scale while the frame unmasks —
+   reads as a camera easing into focus */
+.galItem[data-reveal].tp-in .galImg {
+  animation: tp-gal-settle 1.25s var(--ease-out-soft) both;
+  animation-delay: var(--tp-delay, 0ms);
+}
+@keyframes tp-gal-settle {
+  from { transform: scale(1.14); }
+  to { transform: scale(1); }
 }
 
 .galCap {
@@ -480,8 +536,19 @@
   background: linear-gradient(180deg, rgba(10, 12, 15, 0.2), rgba(10, 12, 15, 0.7));
 }
 
-.galItem:hover .galCap {
-  transform: translateY(0);
+@media (hover: hover) and (pointer: fine) {
+  .galItem:hover .galCap {
+    transform: translateY(0);
+  }
+}
+/* touch has no hover, so the caption would never be readable — show it */
+@media (hover: none) {
+  .galItem::before {
+    opacity: 1;
+  }
+  .galCap {
+    transform: none;
+  }
 }
 
 .galCapTitle {
@@ -506,6 +573,7 @@
   border-radius: 22px;
   background: linear-gradient(135deg, var(--surface-1), var(--bg-base));
   padding: 48px;
+  min-width: 0;
   position: relative;
   overflow: hidden;
 }
@@ -531,6 +599,7 @@
 .legalTitle {
   font-weight: 600;
   font-size: 38px;
+  text-wrap: balance;
   color: var(--text-hi);
   margin: 14px 0 0;
   line-height: 1.12;
@@ -572,7 +641,7 @@
 /* ============ CTA ============ */
 .ctaSection {
   position: relative;
-  padding: 120px 56px;
+  padding: 120px max(56px, env(safe-area-inset-left));
   background: var(--bg-base);
   overflow: hidden;
   text-align: center;
@@ -582,8 +651,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 760px;
-  height: 760px;
+  width: min(760px, 150vw);
+  height: min(760px, 150vw);
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(41, 171, 226, 0.16), rgba(255, 158, 27, 0.05) 45%, rgba(41, 171, 226, 0) 66%);
   pointer-events: none;
@@ -599,6 +668,7 @@
 .ctaTitle {
   font-weight: 600;
   font-size: 60px;
+  text-wrap: balance;
   line-height: 1.02;
   letter-spacing: -0.025em;
   color: var(--text-hi);
@@ -640,19 +710,42 @@
 }
 
 @media (max-width: 720px) {
+  /* one gutter value for the whole page: sections pad by it and full-bleed
+     carousels cancel it with a negative margin, so cards can reach the edge */
   .section,
   .sectionAlt,
   .ctaSection {
-    padding: 70px 20px;
+    --gutter: max(20px, env(safe-area-inset-left));
+    padding: 76px var(--gutter);
   }
   .heroContent {
-    padding: 100px 20px 260px;
+    padding: 96px max(20px, env(safe-area-inset-left)) 230px;
   }
   .heroTitle {
     font-size: 44px;
   }
+  .heroLede {
+    font-size: 16.5px;
+    margin-top: 24px;
+  }
+  .heroCtas {
+    gap: 12px;
+    margin-top: 30px;
+    padding: 0;
+  }
+  /* equal-width buttons: a 60%-wide primary next to a 40% ghost read as a bug */
+  .heroCtas > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .h2 {
-    font-size: 32px;
+    font-size: 30px;
+  }
+  .sectionHead {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 30px;
   }
   .servicesGrid {
     grid-template-columns: 1fr;
@@ -660,12 +753,105 @@
   .serviceHero {
     grid-column: span 1;
   }
+  .processHead {
+    margin-bottom: 36px;
+  }
+  .processGrid {
+    gap: 16px;
+  }
+  .stepCard {
+    padding: 26px 22px;
+  }
+  .stepNum {
+    font-size: 44px;
+  }
   .galleryGrid {
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: 160px;
+    grid-auto-rows: 33vw;
+    gap: 10px;
+  }
+  .galCap {
+    padding: 12px 13px;
+  }
+  .galCapTitle {
+    font-size: 14px;
+  }
+  .galCapSub {
+    font-size: 11.5px;
   }
   .scrollHint {
     display: none;
+  }
+  .legalCard {
+    gap: 28px;
+    padding: 28px 22px;
+    border-radius: 18px;
+  }
+  .legalTitle {
+    font-size: 27px;
+  }
+  .legalGrid {
+    gap: 10px;
+  }
+  .legalStat {
+    padding: 16px 14px;
+  }
+  .legalStat div {
+    font-size: 25px;
+  }
+  .ctaTitle {
+    font-size: 38px;
+  }
+  .ctaLede {
+    font-size: 16px;
+  }
+  .marqueeTrack {
+    font-size: 17px;
+  }
+  .marqueeDot {
+    width: 6px;
+    height: 6px;
+    margin: 0 14px;
+  }
+}
+
+/* the stat band under the hero: a 4-across strip cannot work at 375px */
+@media (max-width: 720px) {
+  .statBand {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .stat {
+    padding: 15px 16px;
+    border-right: 1px solid rgba(37, 45, 56, 0.8);
+    border-top: 1px solid rgba(37, 45, 56, 0.55);
+  }
+  .stat:nth-child(2n) {
+    border-right: none;
+  }
+  .stat:nth-child(-n + 2) {
+    border-top: none;
+  }
+  .statValue {
+    font-size: 26px;
+  }
+  .statLabel {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 420px) {
+  .heroTitle {
+    font-size: 37px;
+  }
+  .h2 {
+    font-size: 26px;
+  }
+  .ctaTitle {
+    font-size: 32px;
+  }
+  .galleryGrid {
+    grid-auto-rows: 38vw;
   }
 }
 
@@ -690,11 +876,13 @@
   transition: border-color 0.15s var(--ease), color 0.15s var(--ease), transform 0.15s var(--ease),
     box-shadow 0.15s var(--ease);
 }
-.socialBtn:hover {
-  color: var(--text-hi);
-  border-color: var(--accent-500);
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+@media (hover: hover) and (pointer: fine) {
+  .socialBtn:hover {
+    color: var(--text-hi);
+    border-color: var(--accent-500);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
 }
 
 .socialBtnLabel {
@@ -712,27 +900,34 @@
 
 .socialArrow {
   flex: none;
-  width: 40px;
-  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  place-content: center;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   background: var(--surface-1);
   color: var(--text-dim);
-  font-size: 20px;
-  line-height: 1;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.socialArrow:hover {
-  color: var(--text-hi);
-  border-color: var(--border-strong);
-  background: var(--surface-3);
+@media (hover: hover) and (pointer: fine) {
+  .socialArrow:hover {
+    color: var(--text-hi);
+    border-color: var(--border-strong);
+    background: var(--surface-3);
+  }
 }
 
 .socialSlider {
   display: flex;
   gap: 14px;
   overflow-x: auto;
+  overflow-y: hidden; /* single-axis, same reason as .servicesTrack */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
   padding-bottom: 6px;
   scrollbar-width: none;
@@ -749,6 +944,7 @@
   flex: none;
   height: 480px;
   min-width: 210px;
+  scroll-snap-stop: always;
   padding: 0;
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -758,10 +954,12 @@
   cursor: pointer;
   transition: transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
-.socialVideoCard:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-strong);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+@media (hover: hover) and (pointer: fine) {
+  .socialVideoCard:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
 }
 
 .socialVideo {
@@ -784,29 +982,33 @@
 .socialVideoPlay {
   display: grid;
   place-items: center;
+  place-content: center;
   width: 62px;
   height: 62px;
   border-radius: 999px;
   background: rgba(10, 12, 15, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: #fff;
-  font-size: 20px;
-  padding-left: 4px;
+  padding-left: 3px; /* optical centring of the play triangle */
   transition: transform 0.18s var(--ease);
 }
-.socialVideoCard:hover .socialVideoPlay {
-  transform: scale(1.08);
+@media (hover: hover) and (pointer: fine) {
+  .socialVideoCard:hover .socialVideoPlay {
+    transform: scale(1.08);
+  }
 }
 
 .socialVideoBadge {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  place-content: center;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   background: rgba(10, 12, 15, 0.55);
   backdrop-filter: blur(4px);
@@ -816,14 +1018,32 @@
   z-index: 2;
   transition: background 0.15s ease, transform 0.15s ease;
 }
-.socialVideoBadge:hover {
-  background: rgba(10, 12, 15, 0.8);
-  transform: scale(1.06);
+@media (hover: hover) and (pointer: fine) {
+  .socialVideoBadge:hover {
+    background: rgba(10, 12, 15, 0.8);
+    transform: scale(1.06);
+  }
 }
 
 @media (max-width: 720px) {
   .socialVideoCard {
-    height: 400px;
+    height: min(62vh, 420px);
+    min-width: 0;
+    flex-basis: calc(100% - var(--gutter, 20px) - 46px);
+    scroll-snap-align: center;
+  }
+  .socialVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .socialSliderWrap {
+    margin-top: 26px;
+  }
+  .socialSlider {
+    margin-inline: calc(-1 * var(--gutter, 20px));
+    padding-inline: var(--gutter, 20px);
+    scroll-padding-inline: var(--gutter, 20px);
   }
 }
 
@@ -839,8 +1059,19 @@
   .socialArrow {
     display: none;
   }
-  .socialCard {
-    width: 62vw;
+  .socialLinks {
+    gap: 8px;
+    width: 100%;
+  }
+  .socialBtn {
+    padding: 10px 14px;
+  }
+  .socialBtnLabel {
+    font-size: 11px;
+  }
+  .socialHint {
+    margin-top: 14px;
+    line-height: 1.5;
   }
 }
 
@@ -904,13 +1135,22 @@
 .servicesTrack {
   display: flex;
   gap: 20px;
+  /* BOTH axes are declared. With only `overflow-x: auto`, overflow-y computes
+     from `visible` to `auto`, so the strip also scrolled vertically under a
+     finger — the "cards scroll in two directions" bug. */
   overflow-x: auto;
+  overflow-y: hidden;
+  /* keep the swipe inside the carousel: no page-back gesture, no rubber-band
+     chaining to the document */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  /* NOT `scroll-behavior: smooth` — it fights touch momentum and makes the
+     strip feel rubbery. The arrows pass behavior:'smooth' per call instead. */
   padding: 6px 2px 18px;
   margin: 0 -2px;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 .servicesTrack::-webkit-scrollbar {
@@ -920,6 +1160,7 @@
 .serviceSlide {
   flex: 0 0 calc((100% - 40px) / 3);
   scroll-snap-align: start;
+  scroll-snap-stop: always; /* one card per swipe — never skip two */
   min-height: 420px;
   display: flex;
   flex-direction: column;
@@ -939,9 +1180,29 @@
   transition: transform 0.6s var(--ease), opacity 0.4s ease;
 }
 
-.serviceSlide:hover .serviceSlideImg {
-  transform: scale(1.04);
-  opacity: 0.55;
+@media (hover: hover) and (pointer: fine) {
+  .serviceSlide:hover .serviceSlideImg {
+    transform: scale(1.04);
+    opacity: 0.55;
+  }
+}
+/* arrival: the photo eases out of an over-scale behind the copy */
+.serviceSlide[data-reveal].tp-in .serviceSlideImg {
+  animation: tp-slide-img 1.3s var(--ease-out-soft) both;
+  animation-delay: var(--tp-delay, 0ms);
+}
+@keyframes tp-slide-img {
+  from { transform: scale(1.12); opacity: 0.18; }
+  to { transform: scale(1); opacity: 0.42; }
+}
+/* …and the body copy rises a beat later */
+.serviceSlide[data-reveal].tp-in .serviceSlideBody {
+  animation: tp-slide-body 0.8s var(--ease-out-soft) both;
+  animation-delay: calc(var(--tp-delay, 0ms) + 140ms);
+}
+@keyframes tp-slide-body {
+  from { opacity: 0; transform: translate3d(0, 22px, 0); }
+  to { opacity: 1; transform: none; }
 }
 
 .serviceSlideShade {
@@ -994,23 +1255,36 @@
 
 .sliderDots {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
+/* 4px of paint, 44px of touch target — the bar lives in a ::before so the hit
+   area can stay finger-sized without a fat-looking indicator */
 .sliderDot {
-  width: 22px;
-  height: 4px;
-  border-radius: 2px;
+  position: relative;
+  width: 30px;
+  height: 40px;
   border: none;
-  background: var(--border-subtle);
+  background: none;
   cursor: pointer;
   padding: 0;
-  transition: background 0.25s ease, width 0.25s ease;
+}
+.sliderDot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  right: 4px;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+  background: var(--border-subtle);
+  transition: background 0.25s ease, right 0.25s var(--ease);
 }
 
-.sliderDotOn {
+.sliderDotOn::before {
   background: var(--octane-500);
-  width: 38px;
+  right: -8px;
 }
 
 .sliderArrows {
@@ -1019,20 +1293,24 @@
 }
 
 .sliderArrow {
-  width: 42px;
-  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  place-content: center;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--border-subtle);
   background: var(--surface-1);
   color: var(--text-hi);
-  font-size: 18px;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
 }
 
-.sliderArrow:hover {
-  border-color: var(--octane-500);
-  background: var(--surface-2);
+@media (hover: hover) and (pointer: fine) {
+  .sliderArrow:hover {
+    border-color: var(--octane-500);
+    background: var(--surface-2);
+  }
 }
 
 .sliderArrow:disabled {
@@ -1048,10 +1326,33 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
+  .servicesTrack {
+    gap: 14px;
+    /* full-bleed: cancel the section gutter, then give the scroller its own
+       padding + matching scroll-padding so `scroll-snap-align: start` lands the
+       card exactly on the gutter — including the last one */
+    margin-inline: calc(-1 * var(--gutter, 20px));
+    padding: 4px var(--gutter, 20px) 16px;
+    scroll-padding-inline-start: var(--gutter, 20px);
+  }
   .serviceSlide,
   .serviceSlideFeatured {
-    flex-basis: 86%;
-    min-height: 320px;
+    /* one card fills the screen minus the gutter and a peek of the next */
+    flex-basis: calc(100% - var(--gutter, 20px) - 38px);
+    min-height: 330px;
+  }
+  .serviceSlideBody {
+    padding: 22px 20px;
+  }
+  .serviceSlideBody h3,
+  .serviceSlideFeatured .serviceSlideBody h3 {
+    font-size: 22px;
+  }
+  .serviceSlideBody p {
+    font-size: 14px;
+  }
+  .sliderNav {
+    margin-top: 2px;
   }
 }

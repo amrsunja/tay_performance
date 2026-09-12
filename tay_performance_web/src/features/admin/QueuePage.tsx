@@ -7,6 +7,7 @@ import type { BookingStatus } from '../../types/domain'
 import { formatDuration } from '../booking/useBookingDraft'
 import { filterBookings } from '../../lib/phone'
 import BookingDrawer from './BookingDrawer'
+import Icon from '../../components/ui/Icon'
 import styles from './admin.module.css'
 
 function zoneShort(code: string) {
@@ -180,7 +181,7 @@ export default function QueuePage() {
                       style={!spec.isLegal ? { borderColor: 'rgba(248,113,113,.5)', color: 'var(--status-warning)' } : undefined}
                       title={!spec.isLegal ? 'Non conforme — ack client requis' : undefined}
                     >
-                      {zoneShort(spec.zone)} {spec.vltPercent}%{!spec.isLegal && ' ⚠'}
+                      {zoneShort(spec.zone)} {spec.vltPercent}%{!spec.isLegal && <Icon name="warning" size={11} />}
                     </span>
                   ))}
                 </div>

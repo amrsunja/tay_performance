@@ -19,6 +19,7 @@ import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
 import { formatPhoneDisplay } from '../../lib/phone'
 import styles from '../portal/portal.module.css'
+import Icon from '../../components/ui/Icon'
 import { useSeo } from '../../lib/seo'
 
 type Step = 'phone' | 'code'
@@ -152,7 +153,7 @@ export default function SignInPage() {
               )}
               {mode === 'signin' && session && (
                 <span style={{ fontSize: 12, color: 'var(--status-pending)' }}>
-                  ⚠ En vous connectant à un autre compte, l'historique de cette session anonyme ne sera plus visible
+                  <Icon name="warning" size={14} /> En vous connectant à un autre compte, l'historique de cette session anonyme ne sera plus visible
                   sur cet appareil.
                 </span>
               )}
@@ -204,7 +205,7 @@ export default function SignInPage() {
                   setError('')
                 }}
               >
-                ← Changer de numéro / renvoyer un code
+                <Icon name="arrow-left" size={15} /> Changer de numéro / renvoyer un code
               </button>
             </>
           )}

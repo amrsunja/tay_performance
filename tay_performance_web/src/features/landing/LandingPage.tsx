@@ -4,6 +4,7 @@ import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
 import SectionTag from '../../components/ui/SectionTag'
 import CountUp from '../../components/ui/CountUp'
+import Icon from '../../components/ui/Icon'
 import { useReveal } from '../../hooks/useReveal'
 import { useSeo } from '../../lib/seo'
 import { DEFAULT_DESCRIPTION, SERVICE_AREA } from '../../lib/site'
@@ -177,23 +178,23 @@ export default function LandingPage() {
           <h1 className={`clash ${styles.heroTitle}`}>
             <span className="sr-only">Vitres teintées à Strasbourg — Tay Performance. </span>
             <span className={styles.heroLine}>
-              <span data-reveal data-delay="90" style={{ display: 'inline-block' }}>
+              <span data-reveal data-anim="hero" data-delay="90" style={{ display: 'inline-block' }}>
                 L'obscurité,
               </span>
             </span>
             <span className={styles.heroLine}>
-              <span data-reveal data-delay="200" style={{ display: 'inline-block', color: 'var(--accent-500)' }}>
+              <span data-reveal data-anim="hero" data-delay="200" style={{ display: 'inline-block', color: 'var(--accent-500)' }}>
                 posée au millimètre.
               </span>
             </span>
           </h1>
-          <p data-reveal data-delay="520" className={styles.heroLede}>
+          <p data-reveal data-anim="hero" data-delay="520" className={styles.heroLede}>
             Pose professionnelle de films teintés sur-mesure. Vous déposez la voiture, nos installateurs s'occupent du
             reste — précision, garantie, conformité légale française.
           </p>
           <div data-reveal data-delay="640" className={styles.heroCtas}>
-            <Link to="/reserver" className="cta" style={{ fontSize: 16, padding: '17px 30px' }}>
-              Réserver un créneau <span style={{ fontSize: 18 }}>→</span>
+            <Link to="/reserver" className="cta" style={{ fontSize: 16, padding: '17px 28px' }}>
+              Réserver un créneau <Icon name="arrow-right" size={18} />
             </Link>
             <a href="#galerie" className="ghost" style={{ fontSize: 16, padding: '17px 24px', fontWeight: 500 }}>
               Voir la galerie
@@ -203,7 +204,9 @@ export default function LandingPage() {
 
         <div className={styles.scrollHint} aria-hidden>
           <span className={`mono ${styles.scrollHintLabel}`}>SCROLL</span>
-          <span className={styles.scrollHintArrow}>↓</span>
+          <span className={styles.scrollHintArrow}>
+            <Icon name="arrow-down" size={18} />
+          </span>
         </div>
 
         <div data-reveal className={styles.statBand}>
@@ -216,7 +219,7 @@ export default function LandingPage() {
           <div className={styles.stat}>
             <div className={`mono ${styles.statValue}`}>
               <CountUp target={49} divide={10} />
-              <span style={{ color: 'var(--brand-blue)' }}>★</span>
+              <Icon name="star" size={20} style={{ color: 'var(--brand-blue)' }} />
             </div>
             <div className={styles.statLabel}>Note moyenne clients</div>
           </div>
@@ -243,7 +246,7 @@ export default function LandingPage() {
               {MARQUEE_ITEMS.map((item, i) => (
                 <span key={item} className={styles.marqueeItem}>
                   {item}
-                  <span style={{ color: MARQUEE_DOTS[i % 3], margin: '0 22px' }}>●</span>
+                  <span className={styles.marqueeDot} style={{ color: MARQUEE_DOTS[i % 3] }} />
                 </span>
               ))}
             </span>
@@ -263,8 +266,8 @@ export default function LandingPage() {
                 prestation par prestation
               </h2>
             </div>
-            <Link to="/reserver" data-reveal data-anim="right" className="navlink" style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
-              Tout voir →
+            <Link to="/reserver" data-reveal data-anim="right" className={`navlink ${styles.sectionHeadLink}`}>
+              Tout voir <Icon name="arrow-right" size={15} />
             </Link>
           </div>
           <ServicesSlider />
@@ -301,7 +304,13 @@ export default function LandingPage() {
           </div>
           <div className={styles.galleryGrid}>
             {GALLERY.map((item, i) => (
-              <figure key={item.title} className={`${styles.galItem} ${item.cls ? styles[item.cls] : ''}`} data-reveal data-delay={80 * i}>
+              <figure
+                key={item.title}
+                className={`${styles.galItem} ${item.cls ? styles[item.cls] : ''}`}
+                data-reveal
+                data-anim="mask"
+                data-delay={90 * i}
+              >
                 <img src={item.src} alt={item.title} className={styles.galImg} />
                 <figcaption className={styles.galCap} style={{ borderTop: `2px solid ${item.border}` }}>
                   <div className={`sat ${styles.galCapTitle}`}>{item.title}</div>
@@ -367,8 +376,12 @@ export default function LandingPage() {
             <span className="sr-only"> Vitres teintées à {SERVICE_AREA.slice(0, 5).join(', ')}.</span>
           </h2>
           <p className={styles.ctaLede}>Devis transparent en moins de 3 minutes. Créneau confirmé en direct.</p>
-          <Link to="/reserver" className="cta" style={{ fontSize: 17, padding: '19px 38px', marginTop: 34, animation: 'tp-pulse 2.8s ease-in-out infinite' }}>
-            Réserver maintenant <span style={{ fontSize: 18 }}>→</span>
+          <Link
+            to="/reserver"
+            className="cta"
+            style={{ fontSize: 17, padding: '19px 34px', marginTop: 34, animation: 'tp-pulse 2.8s ease-in-out infinite' }}
+          >
+            Réserver maintenant <Icon name="arrow-right" size={18} />
           </Link>
         </div>
       </section>
@@ -384,32 +397,48 @@ function ServicesSlider() {
   const trackRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
 
+  /* scrollLeft that puts slide `el` flush against the scroller's content edge.
+     On mobile the track is full-bleed with its own inline padding, so the raw
+     offsetLeft would be off by exactly that padding. */
+  const offsetOf = (track: HTMLElement, el: HTMLElement) =>
+    el.offsetLeft - track.offsetLeft - track.clientLeft - parseFloat(getComputedStyle(track).paddingLeft || '0')
+
   useEffect(() => {
     const track = trackRef.current
     if (!track) return
+    let raf = 0
     const onScroll = () => {
-      const slides = Array.from(track.children) as HTMLElement[]
-      const left = track.scrollLeft
-      let best = 0
-      let bestDist = Infinity
-      slides.forEach((el, i) => {
-        const d = Math.abs(el.offsetLeft - track.offsetLeft - left)
-        if (d < bestDist) {
-          bestDist = d
-          best = i
-        }
+      // coalesce to one measure per frame — scroll events fire far faster than
+      // paint on a touch device and this loop reads layout
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const slides = Array.from(track.children) as HTMLElement[]
+        const left = track.scrollLeft
+        let best = 0
+        let bestDist = Infinity
+        slides.forEach((el, i) => {
+          const d = Math.abs(offsetOf(track, el) - left)
+          if (d < bestDist) {
+            bestDist = d
+            best = i
+          }
+        })
+        setActive(best)
       })
-      setActive(best)
     }
     track.addEventListener('scroll', onScroll, { passive: true })
-    return () => track.removeEventListener('scroll', onScroll)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+      track.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   const goTo = (i: number) => {
     const track = trackRef.current
     if (!track) return
     const el = track.children[Math.max(0, Math.min(SERVICES.length - 1, i))] as HTMLElement | undefined
-    if (el) track.scrollTo({ left: el.offsetLeft - track.offsetLeft, behavior: 'smooth' })
+    if (el) track.scrollTo({ left: offsetOf(track, el), behavior: 'smooth' })
   }
 
   const toneColor = (tone: string) =>
@@ -461,11 +490,23 @@ function ServicesSlider() {
           ))}
         </div>
         <div className={styles.sliderArrows}>
-          <button type="button" className={styles.sliderArrow} aria-label="Prestation précédente" disabled={active === 0} onClick={() => goTo(active - 1)}>
-            ←
+          <button
+            type="button"
+            className={styles.sliderArrow}
+            aria-label="Prestation précédente"
+            disabled={active === 0}
+            onClick={() => goTo(active - 1)}
+          >
+            <Icon name="chevron-left" size={20} />
           </button>
-          <button type="button" className={styles.sliderArrow} aria-label="Prestation suivante" disabled={active >= SERVICES.length - 1} onClick={() => goTo(active + 1)}>
-            →
+          <button
+            type="button"
+            className={styles.sliderArrow}
+            aria-label="Prestation suivante"
+            disabled={active >= SERVICES.length - 1}
+            onClick={() => goTo(active + 1)}
+          >
+            <Icon name="chevron-right" size={20} />
           </button>
         </div>
       </div>

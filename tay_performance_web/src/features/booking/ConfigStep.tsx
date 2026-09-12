@@ -3,6 +3,7 @@ import { FRONT_LEGAL_MIN_VLT, TLV_STOPS, type TintZoneCode } from '../../types/d
 import type { CatalogZone, ResolvedVehicle } from '../../types/api'
 import TintBlueprint from './TintBlueprint'
 import { formatDuration, formatEuro, formatPrice, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './booking.module.css'
 
 interface StepProps {
@@ -143,11 +144,11 @@ export default function ConfigStep({ state, dispatch, quote, zones, vehicle, zon
                   </span>
                   {quote.frontIllegal ? (
                     <span className={`mono ${styles.legalBadge} ${styles.legalBadgeBad}`}>
-                      ✕ Illégal (&lt;{FRONT_LEGAL_MIN_VLT}%)
+                      <Icon name="close" size={13} /> Illégal (&lt;{FRONT_LEGAL_MIN_VLT}%)
                     </span>
                   ) : (
                     <span className={`mono ${styles.legalBadge} ${styles.legalBadgeOk}`}>
-                      ✓ Conforme (≥{FRONT_LEGAL_MIN_VLT}%)
+                      <Icon name="check" size={13} /> Conforme (≥{FRONT_LEGAL_MIN_VLT}%)
                     </span>
                   )}
                 </div>
@@ -216,7 +217,7 @@ export default function ConfigStep({ state, dispatch, quote, zones, vehicle, zon
                       onClick={() => dispatch({ type: 'toggleZone', zone: zone.code })}
                     >
                       <span className={`${styles.zoneBox} ${on ? styles.zoneBoxOn : ''}`} aria-hidden>
-                        ✓
+                        <Icon name="check" size={14} strokeWidth={2.6} />
                       </span>
                       <span className={styles.zoneBody}>
                         <span className={styles.zoneName}>
@@ -241,9 +242,7 @@ export default function ConfigStep({ state, dispatch, quote, zones, vehicle, zon
             {/* ---------- legal warning + explicit acknowledgement ---------- */}
             {quote.nonCompliant && (
               <div className={styles.warnBox} role="alert">
-                <span style={{ fontSize: 20 }} aria-hidden>
-                  ⚠
-                </span>
+                <Icon name="warning" size={20} style={{ color: 'var(--status-warning)', marginTop: 1 }} />
                 <span className={styles.warnText}>
                   <b>Avant non conforme.</b> La loi française impose ≥{FRONT_LEGAL_MIN_VLT}% TLV à l'avant. En dessous,
                   le véhicule est verbalisable (135€, −3 points). On peut poser, mais hors-conformité.
@@ -311,7 +310,7 @@ export default function ConfigStep({ state, dispatch, quote, zones, vehicle, zon
                 disabled={!canContinue}
                 onClick={() => dispatch({ type: 'goStep', step: 'calendar' })}
               >
-                Réserver mon créneau <span style={{ fontSize: 18 }}>→</span>
+                Réserver mon créneau <Icon name="arrow-right" size={18} />
               </button>
               <div className={styles.summaryFoot}>
                 {quote.onRequest ? 'Prix communiqué par l’atelier · sans engagement' : 'Prix TTC · paiement à l’atelier'}

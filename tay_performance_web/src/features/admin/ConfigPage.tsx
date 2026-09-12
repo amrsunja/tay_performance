@@ -14,6 +14,7 @@ import {
 } from '../../api/configAdmin'
 import { errorMessage } from '../../lib/supabase'
 import type { WorkshopHoursRow } from '../../types/api'
+import Icon from '../../components/ui/Icon'
 import styles from './admin.module.css'
 
 const DAY_LABELS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
@@ -172,7 +173,7 @@ export default function ConfigPage() {
                 </button>
                 {(futureCount.data ?? 0) > 0 && (
                   <span className="mono" style={{ fontSize: 11, color: 'var(--status-pending)' }}>
-                    ⚠ {futureCount.data} réservation(s) à venir — vérifiez les conflits
+                    <Icon name="warning" size={14} /> {futureCount.data} réservation(s) à venir — vérifiez les conflits
                   </span>
                 )}
               </div>
@@ -257,7 +258,7 @@ export default function ConfigPage() {
                   title="Débloquer"
                   onClick={() => removeBlackout(blackout.id).then(invalidate).catch((e) => setError(errorMessage(e)))}
                 >
-                  ✕
+                  <Icon name="close" size={14} />
                 </button>
               </div>
             ))}
@@ -296,13 +297,13 @@ export default function ConfigPage() {
             <div className={styles.configRow}>
               <span>E-mail de confirmation client</span>
               <span className="pill pill--success">
-                <span aria-hidden>✓</span> Actif
+                <Icon name="check" size={12} /> Actif
               </span>
             </div>
             <div className={styles.configRow}>
               <span>Rappel J-1</span>
               <span className="pill pill--success">
-                <span aria-hidden>✓</span> Actif
+                <Icon name="check" size={12} /> Actif
               </span>
             </div>
             <div className={styles.configRow}>
@@ -337,7 +338,7 @@ export default function ConfigPage() {
                 disabled={newPassword.length < 10 || passwordMutation.isPending}
                 onClick={() => passwordMutation.mutate()}
               >
-                {passwordSaved ? '✓ Modifié' : 'Changer'}
+                {passwordSaved ? 'Modifié' : 'Changer'}
               </button>
             </div>
           </div>

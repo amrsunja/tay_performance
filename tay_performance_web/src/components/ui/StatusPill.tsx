@@ -1,12 +1,16 @@
 import type { BookingStatus } from '../../types/domain'
+import Icon, { type IconName } from './Icon'
 
-const STATUS_META: Record<BookingStatus, { label: string; tone: string; icon: string }> = {
-  requested: { label: 'Demandé', tone: 'pending', icon: '◔' },
-  confirmed: { label: 'Confirmé', tone: 'success', icon: '✓' },
-  in_progress: { label: 'En pose', tone: 'info', icon: '◑' },
-  completed: { label: 'Terminé', tone: 'success', icon: '✓' },
-  cancelled: { label: 'Annulé', tone: 'danger', icon: '✕' },
-  no_show: { label: 'Client absent', tone: 'muted', icon: '—' },
+/* `icon` is an <Icon> name, or null for the states that read better with just
+   the coloured dot the pill already draws. The old ◔ ◑ ✓ ✕ glyphs rendered at
+   wildly different sizes (and partly as emoji) across mobile browsers. */
+const STATUS_META: Record<BookingStatus, { label: string; tone: string; icon: IconName | null }> = {
+  requested: { label: 'Demandé', tone: 'pending', icon: null },
+  confirmed: { label: 'Confirmé', tone: 'success', icon: 'check' },
+  in_progress: { label: 'En pose', tone: 'info', icon: null },
+  completed: { label: 'Terminé', tone: 'success', icon: 'check' },
+  cancelled: { label: 'Annulé', tone: 'danger', icon: 'close' },
+  no_show: { label: 'Client absent', tone: 'muted', icon: null },
 }
 
 export const STATUS_LABEL: Record<BookingStatus, string> = Object.fromEntries(
@@ -70,7 +74,7 @@ export default function StatusPill({ status }: { status: BookingStatus }) {
   const meta = STATUS_META[status]
   return (
     <span className={`pill pill--${meta.tone}`}>
-      <span aria-hidden>{meta.icon}</span>
+      {meta.icon ? <Icon name={meta.icon} size={12} strokeWidth={2.4} /> : <span className="pill__dot" aria-hidden />}
       {meta.label}
     </span>
   )

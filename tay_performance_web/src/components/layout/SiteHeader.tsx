@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import logo from '../../assets/logo.svg'
 import { useAuth } from '../../auth/AuthProvider'
+import Icon from '../ui/Icon'
 import styles from './layout.module.css'
 
 const NAV = [
@@ -15,12 +16,7 @@ const NAV = [
 ]
 
 function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <circle cx="12" cy="8" r="3.6" />
-      <path d="M4.5 20c1.4-3.4 4.2-5 7.5-5s6.1 1.6 7.5 5" strokeLinecap="round" />
-    </svg>
-  )
+  return <Icon name="user" size={20} />
 }
 
 function BurgerIcon({ open }: { open: boolean }) {

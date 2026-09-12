@@ -8,7 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 56px;
+  gap: 16px;
+  padding: 16px max(56px, env(safe-area-inset-left)) 16px max(56px, env(safe-area-inset-left));
   border-bottom: 1px solid rgba(37, 45, 56, 0.7);
   background: rgba(10, 12, 15, 0.72);
   backdrop-filter: blur(14px);
@@ -32,19 +33,32 @@
 }
 
 .profileBtn {
-  display: grid;
+  /* inline-grid + place-items is the only pairing that centres an inline SVG on
+     BOTH axes here: the ≤900px rule below used to re-declare `display:inline-flex`
+     without a justify-content, which pushed the glyph to the left edge of the
+     circle (the "profile icon is not centred" bug). Centring now lives on this
+     rule and the media query only toggles visibility. */
+  display: inline-grid;
+  grid-auto-flow: column;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  place-content: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
   background: var(--surface-1);
   color: var(--text-soft);
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.profileBtn:hover {
-  border-color: var(--octane-500);
-  color: var(--text);
+@media (hover: hover) and (pointer: fine) {
+  .profileBtn:hover {
+    border-color: var(--octane-500);
+    color: var(--text);
+  }
+}
+@media (hover: none) {
+  .profileBtn:active { background: var(--surface-2); }
 }
 /* icon variant of "Se connecter" — mobile only */
 .profileBtnMobile,
@@ -57,10 +71,12 @@
 
 /* ---------- burger ---------- */
 .burgerBtn {
-  width: 40px;
-  height: 40px;
-  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: inline-grid;
   place-items: center;
+  place-content: center;
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   background: var(--surface-1);
@@ -91,7 +107,7 @@
 
 /* ---------- footer ---------- */
 .footer {
-  padding: 56px;
+  padding: 56px max(56px, env(safe-area-inset-left)) calc(56px + env(safe-area-inset-bottom));
   background: var(--bg-canvas);
   border-top: 1px solid var(--surface-1);
 }
@@ -168,10 +184,13 @@
 
 @media (max-width: 900px) {
   .header {
-    padding: 12px 18px;
+    padding: 11px max(14px, env(safe-area-inset-left)) 11px max(14px, env(safe-area-inset-left));
   }
   .headerSpacer {
-    height: 67px;
+    height: 66px;
+  }
+  .logo {
+    height: 38px;
   }
   .nav {
     display: none;
@@ -179,7 +198,10 @@
   .signIn {
     display: none;
   }
-  .profileBtnMobile,
+  /* visibility only — the centring stays on .profileBtn */
+  .profileBtnMobile {
+    display: inline-grid;
+  }
   .mobileOnly {
     display: inline-flex;
   }
@@ -206,8 +228,11 @@
     right: 0;
     bottom: 0;
     z-index: 101;
-    width: min(320px, 86vw);
-    padding: 24px 24px 32px;
+    width: min(330px, 88vw);
+    max-width: 100vw;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: max(22px, env(safe-area-inset-top)) 22px calc(28px + env(safe-area-inset-bottom));
     background: var(--surface-2, #0e1116);
     border-left: 1px solid var(--border-strong);
     box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
@@ -232,7 +257,10 @@
     color: var(--text-faint);
   }
   .drawer a {
-    padding: 12px 10px;
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 11px 10px;
     border-radius: 10px;
     font-size: 16px !important;
   }
@@ -249,6 +277,18 @@
     padding-top: 18px !important;
   }
   .footer {
-    padding: 40px 20px;
+    padding: 40px max(18px, env(safe-area-inset-left)) calc(34px + env(safe-area-inset-bottom));
+  }
+  .footerInner {
+    gap: 30px;
+  }
+  .footerCols {
+    gap: 34px;
+    flex-wrap: wrap;
+  }
+  .footerLegal {
+    margin-top: 28px;
+    flex-direction: column;
+    gap: 10px;
   }
 }

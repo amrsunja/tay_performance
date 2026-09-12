@@ -88,7 +88,7 @@ export default function AgendaPage() {
         start: startHour,
         duration: b.durationMin / 60,
         tone: toneOf(b),
-        sub: b.specs.map((s) => `${zoneShort(s.zone)} ${s.vltPercent}%${s.isLegal ? '' : ' ⚠'}`).join(' · '),
+        sub: b.specs.map((s) => `${zoneShort(s.zone)} ${s.vltPercent}%${s.isLegal ? '' : ' (!)'}`).join(' · '),
       }
     })
   }, [bookings.data])

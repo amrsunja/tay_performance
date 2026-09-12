@@ -19,6 +19,7 @@ import { errorMessage } from '../../lib/supabase'
 import type { ModelPriceOverride, PricingRuleInfo } from '../../types/api'
 import type { BodyStyleCode, TintZoneCode } from '../../types/domain'
 import { formatDuration, formatEuro, zoneMinutes, zonePrice } from '../booking/useBookingDraft'
+import Icon from '../../components/ui/Icon'
 import styles from './admin.module.css'
 
 type PriceKey = 'rearPrice' | 'frontPrice' | 'windshieldPrice'
@@ -450,7 +451,9 @@ function SimulatorBlock({ rules, overrides }: { rules: PricingRuleInfo[]; overri
                 <td className={`mono ${styles.tdNum}`}>{l.minutes} min</td>
                 <td className={`mono ${styles.tdNum}`}>
                   {rule?.quoteOnRequest ? 'sur devis' : formatEuro(l.price)}
-                  {l.overridden && <span style={{ color: 'var(--octane-300)', marginLeft: 6 }}>★</span>}
+                  {l.overridden && (
+                    <Icon name="star" size={11} style={{ display: 'inline-block', color: 'var(--octane-300)', marginLeft: 6 }} />
+                  )}
                 </td>
               </tr>
             ))}
@@ -464,7 +467,7 @@ function SimulatorBlock({ rules, overrides }: { rules: PricingRuleInfo[]; overri
           </tbody>
         </table>
         <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-          ★ = tarif spécial du modèle · durée arrondie au créneau de {gran} min · 60 % arrière / 40 % avant (+ 40 min pare-brise)
+          Étoile = tarif spécial du modèle · durée arrondie au créneau de {gran} min · 60 % arrière / 40 % avant (+ 40 min pare-brise)
         </span>
       </div>
     </>

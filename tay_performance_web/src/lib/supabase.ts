@@ -1,24 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './supabaseConfig'
 
 /**
  * Single Supabase client for the whole app.
- * Only the anon key ever ships to the browser — RLS + SECURITY DEFINER RPCs
- * are the security boundary (docs/03_AUTH_AND_SECURITY.md).
+ * Only the publishable (anon) key ever ships to the browser — RLS + SECURITY DEFINER
+ * RPCs are the security boundary (docs/03_AUTH_AND_SECURITY.md).
+ *
+ * URL/key resolution (and the hardening against a build env that mangles them)
+ * lives in ./supabaseConfig.
  *
  * After running `supabase gen types typescript` you can parameterize this
  * client with the generated Database type for full end-to-end typing.
  */
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-
-if (!url || !anonKey) {
-  // Fail loudly at boot — a silent missing env produces confusing 401s later.
-  throw new Error(
-    'Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Copy .env.example to .env.local and fill it.',
-  )
-}
-
-export const supabase = createClient(url, anonKey, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -75,6 +69,13 @@ export function errorMessage(e: unknown): string {
   }
   if (lower.includes('signup') && lower.includes('disabled')) {
     return 'Création de session désactivée côté serveur — contactez-nous.'
+  }
+  if (lower.includes('invalid api key') || lower.includes('no api key') || lower.includes('jwsinvalid')) {
+    // the deployed bundle carries a wrong/mangled publishable key — ops issue, not the user's
+    return 'Service momentanément indisponible (clé API serveur refusée). Réessayez plus tard ou appelez-nous.'
+  }
+  if (status === 401 || status === 403) {
+    return "Accès refusé par le serveur — réessayez, ou appelez-nous si le problème persiste."
   }
   if (status >= 500 || lower.includes('failed to fetch') || lower.includes('network')) {
     return 'Connexion au serveur impossible — vérifiez votre réseau et réessayez.'

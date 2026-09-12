@@ -16,12 +16,15 @@ export function useReveal(deps: unknown[] = []) {
           if (!entry.isIntersecting) return
           const el = entry.target as HTMLElement
           const delay = el.dataset.delay ? parseInt(el.dataset.delay, 10) : 0
-          el.style.transitionDelay = `${delay}ms`
+          // --tp-delay drives the keyframe animations declared in base.css
+          if (delay) el.style.setProperty('--tp-delay', `${delay}ms`)
           el.classList.add('tp-in')
           io.unobserve(el)
         })
       },
-      { threshold: 0.15 },
+      // a small negative bottom margin makes cards start their entrance just before
+      // they are fully in view, so the animation lands as the user arrives on it
+      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
     )
 
     const observeAll = (root: ParentNode) => {

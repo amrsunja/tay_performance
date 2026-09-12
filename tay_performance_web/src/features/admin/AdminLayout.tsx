@@ -5,17 +5,20 @@ import logo from '../../assets/logo.svg'
 import { useAuth } from '../../auth/AuthProvider'
 import { getCatalog } from '../../api/catalog'
 import NewBookingModal from './NewBookingModal'
+import Icon, { type IconName } from '../../components/ui/Icon'
 import styles from './admin.module.css'
 import { useSeo } from '../../lib/seo'
 
-const NAV = [
-  { to: '/admin', label: 'File du jour', icon: '▤', end: true },
-  { to: '/admin/agenda', label: 'Agenda', icon: '▦' },
-  { to: '/admin/clients', label: 'Clients', icon: '◉' },
-  { to: '/admin/vehicules', label: 'Véhicules', icon: '⬡' },
-  { to: '/admin/transactions', label: 'Transactions', icon: '◈' },
-  { to: '/admin/tarifs', label: 'Tarifs', icon: '€' },
-  { to: '/admin/config', label: 'Config', icon: '⚙' },
+/* Vector icons, not glyphs: ⚙ renders as an *emoji* on iOS/Android and ⬡ ◈ ▤
+   are plain tofu in most mobile system fonts. */
+const NAV: { to: string; label: string; short: string; icon: IconName; end?: boolean }[] = [
+  { to: '/admin', label: 'File du jour', short: 'File', icon: 'list', end: true },
+  { to: '/admin/agenda', label: 'Agenda', short: 'Agenda', icon: 'calendar' },
+  { to: '/admin/clients', label: 'Clients', short: 'Clients', icon: 'users' },
+  { to: '/admin/vehicules', label: 'Véhicules', short: 'Véhic.', icon: 'car' },
+  { to: '/admin/transactions', label: 'Transactions', short: 'Trans.', icon: 'receipt' },
+  { to: '/admin/tarifs', label: 'Tarifs', short: 'Tarifs', icon: 'euro' },
+  { to: '/admin/config', label: 'Config', short: 'Config', icon: 'settings' },
 ]
 
 function todayLabel() {
@@ -47,10 +50,11 @@ export default function AdminLayout() {
               end={item.end}
               className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
             >
-              <span className={styles.navIcon} aria-hidden>
-                {item.icon}
+              <span className={styles.navIcon}>
+                <Icon name={item.icon} size={18} />
               </span>
-              {item.label}
+              <span className={styles.navLabel}>{item.label}</span>
+              <span className={styles.navLabelShort}>{item.short}</span>
             </NavLink>
           ))}
         </nav>
@@ -67,7 +71,7 @@ export default function AdminLayout() {
               navigate('/admin/login', { replace: true })
             }}
           >
-            ↩ Déconnexion
+            Déconnexion
           </button>
         </div>
       </aside>
