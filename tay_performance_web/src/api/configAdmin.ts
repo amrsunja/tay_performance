@@ -2,16 +2,9 @@
 import { supabase } from '../lib/supabase'
 import type { BlackoutRow, WorkshopHoursRow } from '../types/api'
 
-export async function getWorkshopHours(): Promise<WorkshopHoursRow[]> {
-  const { data, error } = await supabase.from('workshop_hours').select('*').order('weekday')
-  if (error) throw error
-  return (data ?? []).map((h) => ({
-    weekday: Number(h.weekday),
-    isOpen: Boolean(h.is_open),
-    openTime: (h.open_time as string | null)?.slice(0, 5) ?? null,
-    closeTime: (h.close_time as string | null)?.slice(0, 5) ?? null,
-  }))
-}
+/* The read lives in ./catalog (it is public, not admin-only) — re-exported here so
+   the admin Config page keeps its single import surface. */
+export { getWorkshopHours } from './catalog'
 
 export async function saveWorkshopDay(day: WorkshopHoursRow): Promise<void> {
   const { error } = await supabase.from('workshop_hours').upsert({

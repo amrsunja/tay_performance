@@ -1,7 +1,14 @@
 /* Catalog reads: tint zones + TLV levels + published pack prices per body style +
    per-model overrides + settings. Public data (RLS: readable without a session). */
 import { supabase } from '../lib/supabase'
-import type { AppSettings, Catalog, CatalogZone, ModelPriceOverride, PricingRuleInfo } from '../types/api'
+import type {
+  AppSettings,
+  Catalog,
+  CatalogZone,
+  ModelPriceOverride,
+  PricingRuleInfo,
+  WorkshopHoursRow,
+} from '../types/api'
 import type { BodyStyleCode, TintZoneCode, ZoneGroup } from '../types/domain'
 
 function settingsFromRows(rows: { key: string; value: unknown }[]): AppSettings {
@@ -124,4 +131,20 @@ export async function getCatalog(): Promise<Catalog> {
   for (const o of overrides) modelOverrides[o.modelId] = o
 
   return { zones, vltStops, rules, modelOverrides, settings: settingsFromRows(settingsRes.data ?? []) }
+}
+
+/* ---------- opening hours ----------
+   Public read: workshop_hours carries the `catalog read` RLS policy (anon +
+   authenticated), so the public /adresse page renders exactly the rows the admin
+   edits in Config → Horaires d'ouverture. weekday is ISO: 1 = lundi … 7 = dimanche.
+   Missing rows are treated as closed by the callers. */
+export async function getWorkshopHours(): Promise<WorkshopHoursRow[]> {
+  const { data, error } = await supabase.from('workshop_hours').select('*').order('weekday')
+  if (error) throw error
+  return (data ?? []).map((h) => ({
+    weekday: Number(h.weekday),
+    isOpen: Boolean(h.is_open),
+    openTime: (h.open_time as string | null)?.slice(0, 5) ?? null,
+    closeTime: (h.close_time as string | null)?.slice(0, 5) ?? null,
+  }))
 }

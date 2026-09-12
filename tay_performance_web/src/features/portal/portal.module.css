@@ -561,16 +561,85 @@
   color: var(--text-faint);
   margin-bottom: 6px;
 }
+.hoursHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.hoursStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+}
+.hoursStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.hoursStatusOpen {
+  color: var(--status-success);
+  background: var(--status-success-bg);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+.hoursStatusShut {
+  color: var(--text-dim);
+  background: var(--status-muted-bg);
+  border-color: rgba(100, 116, 139, 0.35);
+}
+
 .hoursList {
   display: grid;
   gap: 4px;
 }
 .hoursRow {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   font-size: 14px;
   color: var(--text);
+}
+.hoursRowToday {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+.hoursToday {
+  margin-left: 8px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-300);
+  vertical-align: middle;
+}
+.hoursSkeleton {
+  height: 19px;
+  border-radius: 6px;
+  background: linear-gradient(100deg, var(--surface-1) 40%, var(--surface-2) 50%, var(--surface-1) 60%);
+  background-size: 200% 100%;
+  animation: hours-shimmer 1.2s linear infinite;
+}
+@keyframes hours-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.hoursFallback {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 .mapCard {
   position: relative;
