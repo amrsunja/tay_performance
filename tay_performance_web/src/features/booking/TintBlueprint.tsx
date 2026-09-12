@@ -6,15 +6,19 @@ import type { TintZoneCode } from '../../types/domain'
 import styles from './booking.module.css'
 
 /**
- * Paint order (bottom → top). The windshield PNG must sit ABOVE the front
- * side windows layer — otherwise the side-window film overlaps the
- * windshield glass on the 3/4 view.
+ * Stacking order, top → bottom:  pare-brise · vitres avant · vitres arrière.
+ *
+ * The array is listed bottom → top because these are absolutely-positioned
+ * siblings, so DOM order *is* paint order (last child paints on top).
+ * Why this order: on the 3/4 view the layers meet at the B-pillar and at the
+ * A-pillar, and the film that is physically closest to the camera has to win —
+ * the windshield over the front side glass, the front side glass over the rear.
  * Layer assets are bundled frontend art (pixel-registered 1266×832) — they are
  * intentionally NOT in the database (docs/01 §5).
  */
 const LAYERS: { code: TintZoneCode; src: string; front: boolean }[] = [
-  { code: 'front_sides', src: frontSidesTint, front: true },
   { code: 'rear_sides', src: rearSidesTint, front: false },
+  { code: 'front_sides', src: frontSidesTint, front: true },
   { code: 'pare_brise', src: frontWindshieldTint, front: true },
 ]
 
