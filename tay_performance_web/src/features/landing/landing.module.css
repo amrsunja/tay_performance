@@ -225,6 +225,7 @@
   min-width: 0;
   padding: 24px 40px;
   border-right: 1px solid rgba(37, 45, 56, 0.8);
+  text-align: center;
 }
 
 .stat:last-child {
@@ -234,6 +235,7 @@
 .statValue {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   font-weight: 600;
   font-size: 36px;
@@ -270,6 +272,11 @@
   white-space: nowrap;
   animation: marquee-scroll 36s linear infinite;
   will-change: transform;
+  backface-visibility: hidden;
+}
+
+.marquee:hover .marqueeTrack {
+  animation-play-state: paused;
 }
 
 .marqueeDot {
@@ -284,6 +291,7 @@
 .marqueeCopy {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   padding-right: 0;
 }
 
@@ -295,6 +303,12 @@
 @keyframes marquee-scroll {
   0% { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marqueeTrack {
+    animation: none;
+  }
 }
 
 /* ============ services ============ */
