@@ -31,7 +31,7 @@ function BurgerIcon({ open }: { open: boolean }) {
 }
 
 export default function SiteHeader() {
-  const { session, loading } = useAuth()
+  const { session, loading, isAdmin } = useAuth()
   const location = useLocation()
   const [open, setOpen] = useState(false)
 
@@ -68,6 +68,27 @@ export default function SiteHeader() {
     )
   )
 
+  // admin shortcut — UX only, RequireAdmin + RLS still guard /admin
+  const admin = !loading && session && isAdmin && (
+    <>
+      <Link
+        to="/admin"
+        className={`ghost ${styles.adminBtn}`}
+        style={{ fontSize: 14, padding: '11px 18px', borderRadius: 12 }}
+      >
+        <Icon name="settings" size={16} /> Admin
+      </Link>
+      <Link
+        to="/admin"
+        aria-label="Panneau admin"
+        title="Panneau admin"
+        className={`${styles.profileBtn} ${styles.profileBtnMobile} ${styles.adminIconBtn}`}
+      >
+        <Icon name="settings" size={19} />
+      </Link>
+    </>
+  )
+
   const links = (
     <>
       {NAV.map((item) => (
@@ -101,11 +122,13 @@ export default function SiteHeader() {
       {/* desktop */}
       <nav className={styles.nav} aria-label="Navigation principale">
         {links}
+        {admin}
         {account}
       </nav>
 
       {/* mobile: profile always visible + burger */}
       <div className={styles.mobileBar}>
+        {admin}
         {account}
         <button
           type="button"
@@ -132,6 +155,11 @@ export default function SiteHeader() {
               </button>
             </div>
             {links}
+            {!loading && session && isAdmin && (
+              <Link to="/admin" className={`navlink ${styles.drawerAdmin}`} style={{ fontSize: 14 }}>
+                <Icon name="settings" size={18} /> Panneau admin
+              </Link>
+            )}
             {!loading && (
               <Link to={session ? '/profil' : '/connexion'} className={`navlink ${styles.drawerAccount}`} style={{ fontSize: 14 }}>
                 <ProfileIcon /> {session ? 'Mon profil' : 'Se connecter'}

@@ -36,6 +36,8 @@ const ERROR_COPY: Record<string, string> = {
   EMAIL_REQUIRED: 'Une adresse e-mail valide est requise.',
   PHONE_REQUIRED: 'Un numéro de téléphone valide est requis.',
   INVALID_INPUT: 'Décrivez votre véhicule (3 caractères minimum).',
+  SLOT_IN_PAST: 'Impossible de déplacer un rendez-vous dans le passé.',
+  INVALID_SLOT: 'Date ou heure invalide.',
   NOT_FOUND: 'Introuvable.',
   FORBIDDEN: 'Accès refusé.',
 }

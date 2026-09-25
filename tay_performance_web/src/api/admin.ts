@@ -116,6 +116,16 @@ export async function setBookingPrice(bookingId: string, price: number, reason?:
   if (error) throw error
 }
 
+/** Move a booking to another start (same duration) — traced in the history, e-mailed to the client (0018). */
+export async function rescheduleBooking(bookingId: string, newStartISO: string, reason?: string | null): Promise<void> {
+  const { error } = await supabase.rpc('admin_reschedule_booking', {
+    p_booking_id: bookingId,
+    p_new_start: newStartISO,
+    p_reason: reason ?? null,
+  })
+  if (error) throw error
+}
+
 export async function getStatusHistory(bookingId: string): Promise<StatusHistoryRow[]> {
   const { data, error } = await supabase
     .from('booking_status_history')

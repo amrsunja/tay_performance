@@ -154,6 +154,24 @@ async function handleStatusChange(bookingId: string, toStatus: string) {
   }
 }
 
+/** Admin moved the booking (0018) — note: reschedule|<old ISO>|<new ISO>|<reason> */
+async function handleRescheduled(bookingId: string, note: string) {
+  const b = await getBooking(bookingId);
+  if (!b?.contact_email) return;
+  const [, oldIso, , ...rest] = note.split("|");
+  const reason = rest.join("|").trim();
+  const old = new Date(oldIso);
+  const was = Number.isNaN(old.getTime()) ? "" : `${dateFmt.format(old)} à ${timeFmt.format(old)}`;
+  const recap = recapHtml(b, await getAddress());
+  const intro = `L'atelier a déplacé votre rendez-vous${was ? ` (initialement le ${was})` : ""}.`
+    + (reason ? ` Motif : ${reason}.` : "")
+    + " Voici le nouveau créneau :";
+  await sendEmail(b.contact_email, `Rendez-vous déplacé — ${b.reference}`,
+    wrap(`Bonjour ${b.contact_name},`, `<p>${intro}</p>${recap}`));
+  await sendBookerCopy(b, `Rendez-vous déplacé — ${b.reference}`,
+    `Le rendez-vous réservé pour <b>${b.contact_name}</b> a été déplacé${was ? ` (initialement le ${was})` : ""}.`, recap);
+}
+
 async function handleReminders() {
   // tomorrow's confirmed bookings (Europe/Paris)
   const now = new Date();
@@ -188,7 +206,11 @@ Deno.serve(async (req) => {
       await handleBookingCreated(payload.record.id);
     } else if (payload?.type === "INSERT" && payload?.table === "booking_status_history") {
       const rec = payload.record;
-      if (rec.from_status !== null) {
+      const note: string = rec.note ?? "";
+      if (note.startsWith("reschedule|")) {
+        await handleRescheduled(rec.booking_id, note);
+      } else if (rec.from_status !== null && rec.from_status !== rec.to_status) {
+        // from = to rows are price / revenue annotations, not status changes
         await handleStatusChange(rec.booking_id, rec.to_status);
       }
     }

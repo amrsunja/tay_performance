@@ -60,6 +60,24 @@
 @media (hover: none) {
   .profileBtn:active { background: var(--surface-2); }
 }
+/* admin shortcut (signed-in admins only) */
+.adminBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--octane-500) !important;
+  color: var(--octane-300) !important;
+}
+.adminIconBtn {
+  border-color: var(--octane-500);
+  color: var(--octane-300);
+}
+.drawerAdmin {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--octane-300) !important;
+}
 /* icon variant of "Se connecter" — mobile only */
 .profileBtnMobile,
 .mobileOnly,
@@ -197,6 +215,9 @@
     display: none;
   }
   .signIn {
+    display: none;
+  }
+  .adminBtn {
     display: none;
   }
   /* visibility only — the centring stays on .profileBtn */

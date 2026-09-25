@@ -246,6 +246,8 @@ export interface MyBookingRow {
   forOther: boolean
   /** the workshop adjusted the price (see history) */
   priceOverridden: boolean
+  /** the workshop moved the RDV to another date / time (see history) — null if never */
+  rescheduledAt: string | null
   vehicleLabel: string
   bodyLabel: string
   badge: string

@@ -581,4 +581,140 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T12 — one car at a time (0019): no overlap across bays, one row per start time
+-- ---------------------------------------------------------------
+select set_config('test.t12_day', (current_setting('test.day')::date + 7)::text, false);
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  d date := current_setting('test.t12_day')::date;
+  s timestamptz := (d + time '10:00') at time zone 'Europe/Paris';
+  b jsonb;
+  n int;
+begin
+  -- owned by client A so the client-side history can be checked in T13
+  b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_sides","vlt_percent":20}]', s, 'T12 Client', '0600000012',
+    null, null, 1, '00000000-0000-0000-0000-00000000000a', null);
+  perform set_config('test.t12_booking', b->>'id', false);
+  perform set_config('test.t12_start', s::text, false);
+
+  begin
+    perform public.admin_create_booking(current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_sides","vlt_percent":20}]', s + interval '30 min', 'T12 Bay2', '0600000013',
+      null, null, 2, null, null);
+    raise exception 'T12 overlapping booking on bay 2 accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+
+  select count(*) - count(distinct slot_start) into n from public._day_slots(d, 90, null);
+  if n <> 0 then raise exception 'T12 duplicate start times in _day_slots: %', n; end if;
+  if exists (select 1 from public._day_slots(d, 90, null) where state = 'available'
+               and tstzrange(slot_start, slot_end) && tstzrange(s, s + interval '90 min')) then
+    raise exception 'T12 overlapping slot still offered';
+  end if;
+end $$;
+reset role;
+
+-- the same client cannot grab the same time again (any bay)
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+declare s timestamptz := current_setting('test.t12_start')::timestamptz;
+begin
+  begin
+    perform public.hold_slot(s, 90, 2);
+    raise exception 'T12 hold on bay 2 at a booked time accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+  begin
+    perform public.hold_slot(s, 90, 1);
+    raise exception 'T12 hold at own booked time accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+end $$;
+reset role;
+
+-- constraint is the real boundary: a raw insert on another bay is rejected
+do $$
+begin
+  begin
+    insert into public.bookings (reference, variant_id, bay_index, slot_start, slot_end, duration_min,
+                                 status, price_total, price_breakdown, pricing_version_id,
+                                 contact_name, contact_phone)
+    select 'T12-RAW', variant_id, 2, slot_start, slot_end, duration_min, 'confirmed', price_total,
+           price_breakdown, pricing_version_id, 'Raw', '0600000014'
+      from public.bookings where id = current_setting('test.t12_booking')::uuid;
+    raise exception 'T12 raw overlapping insert accepted';
+  exception when exclusion_violation then null;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------
+-- T13 — admin reschedule (0018): same row moved, traced, visible to the client
+-- ---------------------------------------------------------------
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  v_id uuid := current_setting('test.t12_booking')::uuid;
+  s  timestamptz := current_setting('test.t12_start')::timestamptz;
+  r  jsonb;
+  bk public.bookings%rowtype;
+begin
+  r := public.admin_reschedule_booking(v_id, s + interval '3 hours', 'client indisponible');
+  if not (r->>'changed')::boolean then raise exception 'T13 not changed'; end if;
+  select * into bk from public.bookings where bookings.id = v_id;
+  if bk.rescheduled_at is null then raise exception 'T13 rescheduled_at not set'; end if;
+  if bk.slot_start <> s + interval '3 hours' or bk.slot_end - bk.slot_start <> interval '90 min' then
+    raise exception 'T13 slot not moved correctly: % → %', bk.slot_start, bk.slot_end;
+  end if;
+  if not exists (select 1 from public.booking_status_history h
+                  where h.booking_id = v_id and h.from_status = h.to_status
+                    and h.note like 'reschedule|%|%|client indisponible') then
+    raise exception 'T13 history row missing';
+  end if;
+
+  -- the freed slot can be re-used, then moving back onto it is refused
+  perform public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_sides","vlt_percent":20}]', s, 'T13 Autre', '0600000015', null, null, 1, null, null);
+  begin
+    perform public.admin_reschedule_booking(v_id, s + interval '30 min', null);
+    raise exception 'T13 reschedule onto an occupied slot accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+  begin
+    perform public.admin_reschedule_booking(v_id, now() - interval '1 day', null);
+    raise exception 'T13 reschedule into the past accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_IN_PAST' then raise; end if;
+  end;
+end $$;
+reset role;
+
+-- client A sees the move in his history, and cannot call the admin RPC
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  if not exists (select 1 from public.booking_status_history
+                  where booking_id = current_setting('test.t12_booking')::uuid and note like 'reschedule|%') then
+    raise exception 'T13 client cannot see the reschedule history';
+  end if;
+  begin
+    perform public.admin_reschedule_booking(current_setting('test.t12_booking')::uuid,
+      current_setting('test.t12_start')::timestamptz + interval '6 hours', null);
+    raise exception 'T13 client reschedule via admin RPC accepted';
+  exception when others then
+    if sqlerrm <> 'FORBIDDEN' then raise; end if;
+  end;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

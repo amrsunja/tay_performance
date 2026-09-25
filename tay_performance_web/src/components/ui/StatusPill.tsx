@@ -27,6 +27,24 @@ export function parsePriceNote(note?: string | null): { from: number | null; to:
   return { from: from === '' ? null : Number(from), to: Number(to), reason: rest.join('|') }
 }
 
+const slotFmt = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+})
+
+/** `reschedule|<old ISO>|<new ISO>|<reason>` history notes (admin_reschedule_booking, 0018) */
+export function parseRescheduleNote(note?: string | null): { from: Date; to: Date; reason: string } | null {
+  if (!note?.startsWith('reschedule|')) return null
+  const [, from, to, ...rest] = note.split('|')
+  const f = new Date(from)
+  const t = new Date(to)
+  if (Number.isNaN(f.getTime()) || Number.isNaN(t.getTime())) return null
+  return { from: f, to: t, reason: rest.join('|') }
+}
+
+export function formatSlot(d: Date): string {
+  return slotFmt.format(d)
+}
+
 /** Human sentence for a status-history row (what happened, in French). */
 export function describeTransition(from: BookingStatus | null, to: BookingStatus, note?: string | null): string {
   const n = note ?? ''
@@ -35,6 +53,10 @@ export function describeTransition(from: BookingStatus | null, to: BookingStatus
     return price.from == null
       ? `Prix fixé par l'atelier : ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
       : `Prix modifié par l'atelier : ${euro.format(price.from)} → ${euro.format(price.to)}${price.reason ? ` — ${price.reason}` : ''}`
+  }
+  const moved = parseRescheduleNote(n)
+  if (moved) {
+    return `Rendez-vous déplacé par l'atelier : ${slotFmt.format(moved.from)} → ${slotFmt.format(moved.to)}${moved.reason ? ` — ${moved.reason}` : ''}`
   }
   if (n.startsWith('revenue|')) {
     const [, kind, ...rest] = n.split('|')

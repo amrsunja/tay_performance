@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import SiteHeader from '../../components/layout/SiteHeader'
 import SiteFooter from '../../components/layout/SiteFooter'
-import StatusPill, { describeTransition, parsePriceNote } from '../../components/ui/StatusPill'
+import StatusPill, { describeTransition, formatSlot, parsePriceNote, parseRescheduleNote } from '../../components/ui/StatusPill'
 import { useReveal } from '../../hooks/useReveal'
 import { useAuth } from '../../auth/AuthProvider'
 import { cancelBooking, getMyBookingHistory, getMyBookings, photoUrl } from '../../api/bookings'
@@ -98,10 +98,15 @@ function BookingCard({
   const history = useQuery({
     queryKey: ['my-booking-history', booking.id],
     queryFn: () => getMyBookingHistory(booking.id),
-    enabled: showHistory || booking.priceOverridden,
+    enabled: showHistory || booking.priceOverridden || booking.rescheduledAt != null,
     staleTime: 30_000,
   })
   const lastPriceChange = [...(history.data ?? [])].reverse().find((h) => parsePriceNote(h.note))
+  // first move gives the ORIGINAL slot the client picked
+  const firstMove = booking.rescheduledAt ? (history.data ?? []).map((h) => parseRescheduleNote(h.note)).find(Boolean) : null
+  const lastMove = booking.rescheduledAt
+    ? [...(history.data ?? [])].reverse().map((h) => parseRescheduleNote(h.note)).find(Boolean)
+    : null
   const cancellable =
     (booking.status === 'requested' || booking.status === 'confirmed') &&
     Date.now() < start.getTime() - cutoffHours * 3600_000
@@ -120,6 +125,12 @@ function BookingCard({
           <div className={`mono ${styles.bookingWhen}`}>
             {dateFmt.format(start)} · {timeFmt.format(start)} · {formatDuration(booking.durationMin)}
           </div>
+          {firstMove && (
+            <div className="mono" style={{ fontSize: 12, color: 'var(--octane-300)', marginTop: 4 }}>
+              Déplacé par l'atelier — initialement le {formatSlot(firstMove.from)}
+              {lastMove?.reason ? ` · ${lastMove.reason}` : ''}
+            </div>
+          )}
         </div>
         <div className={styles.bookingHeadRight}>
           <StatusPill status={booking.status} />
@@ -180,7 +191,7 @@ function BookingCard({
               <span className="mono" style={{ fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                 {new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(new Date(h.changedAt))}
               </span>
-              <span style={{ color: parsePriceNote(h.note) ? 'var(--octane-300)' : 'var(--text-soft)' }}>
+              <span style={{ color: parsePriceNote(h.note) || parseRescheduleNote(h.note) ? 'var(--octane-300)' : 'var(--text-soft)' }}>
                 {describeTransition(h.fromStatus, h.toStatus, h.note)}
               </span>
             </div>

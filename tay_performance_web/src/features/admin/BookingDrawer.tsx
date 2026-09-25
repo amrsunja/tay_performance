@@ -13,6 +13,7 @@ import {
   getBookingPhotos,
   getStatusHistory,
   issueWarranty,
+  rescheduleBooking,
   setBookingPrice,
   saveAdminNotes,
   uploadBookingPhoto,
@@ -59,6 +60,30 @@ const STATUS_LABELS: Record<string, string> = {
 const dateFmt = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
 })
+
+/* the workshop runs on Paris time whatever the admin's browser timezone */
+const parisFmt = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+function parisParts(d: Date): { date: string; time: string } {
+  const p = parisFmt.format(d) // "2026-09-25 14:30"
+  return { date: p.slice(0, 10), time: p.slice(11, 16) }
+}
+/** "2026-09-25" + "14:30" read as Europe/Paris wall-clock time → instant */
+function parisToDate(date: string, time: string): Date {
+  const [y, m, d] = date.split('-').map(Number)
+  const [hh, mm] = time.split(':').map(Number)
+  const wanted = Date.UTC(y, m - 1, d, hh, mm)
+  let t = wanted
+  for (let i = 0; i < 2; i++) {
+    const p = parisParts(new Date(t))
+    const [py, pm, pd] = p.date.split('-').map(Number)
+    const [ph, pmin] = p.time.split(':').map(Number)
+    t -= Date.UTC(py, pm - 1, pd, ph, pmin) - wanted
+  }
+  return new Date(t)
+}
+const endFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
 function zoneShort(code: string) {
   const map: Record<string, string> = {
@@ -132,6 +157,23 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
     },
     onError: (e) => setError(errorMessage(e)),
   })
+  // reschedule (0018) — same booking, new date / time, traced + e-mailed to the client
+  const [moving, setMoving] = useState(false)
+  const [moveDate, setMoveDate] = useState('')
+  const [moveTime, setMoveTime] = useState('')
+  const [moveReason, setMoveReason] = useState('')
+  const moveTarget = moveDate !== '' && /^\d{2}:\d{2}$/.test(moveTime) ? parisToDate(moveDate, moveTime) : null
+  const moveMutation = useMutation({
+    mutationFn: () => rescheduleBooking(bookingId, moveTarget!.toISOString(), moveReason.trim() || null),
+    onSuccess: () => {
+      setMoving(false)
+      setMoveReason('')
+      setError('')
+      invalidateAll()
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
+
   const parsedPrice = Number(priceInput.replace(',', '.'))
   const priceOk = priceInput.trim() !== '' && Number.isFinite(parsedPrice) && parsedPrice >= 0
 
@@ -328,6 +370,82 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                 </div>
               )}
             </div>
+
+            {/* date / time — admin can move the RDV; the client sees it in his history */}
+            {(b.status === 'requested' || b.status === 'confirmed') && (
+              <div style={{ padding: 14, borderRadius: 12, background: 'var(--surface-2)', display: 'grid', gap: 8 }}>
+                {!moving ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <span>
+                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.06em' }}>CRÉNEAU </span>
+                      <span className="mono" style={{ fontSize: 13, color: 'var(--text)' }}>{dateFmt.format(new Date(b.slotStart))}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="ghost"
+                      style={{ fontSize: 12, padding: '7px 12px', borderRadius: 9 }}
+                      onClick={() => {
+                        const p = parisParts(new Date(b.slotStart))
+                        setMoveDate(p.date)
+                        setMoveTime(p.time)
+                        setMoving(true)
+                      }}
+                    >
+                      Déplacer le RDV
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input
+                        className="field mono"
+                        type="date"
+                        value={moveDate}
+                        min={parisParts(new Date()).date}
+                        onChange={(e) => setMoveDate(e.target.value)}
+                        aria-label="Nouvelle date"
+                        style={{ width: 170 }}
+                      />
+                      <input
+                        className="field mono"
+                        type="time"
+                        step={900}
+                        value={moveTime}
+                        onChange={(e) => setMoveTime(e.target.value)}
+                        aria-label="Nouvelle heure"
+                        style={{ width: 120 }}
+                      />
+                      <input
+                        className="field"
+                        placeholder="Motif (visible par le client) — ex : demande du client"
+                        value={moveReason}
+                        onChange={(e) => setMoveReason(e.target.value)}
+                        style={{ flex: 1, minWidth: 220 }}
+                      />
+                    </div>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                      Durée conservée ({formatDuration(b.durationMin)})
+                      {moveTarget && ` · fin ${endFmt.format(new Date(moveTarget.getTime() + (new Date(b.slotEnd).getTime() - new Date(b.slotStart).getTime())))}`}
+                      {' '}· heure de Paris · le client est prévenu par e-mail et le voit dans son historique.
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="cta"
+                        style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
+                        disabled={!moveTarget || moveMutation.isPending || moveTarget.getTime() === new Date(b.slotStart).getTime()}
+                        onClick={() => moveMutation.mutate()}
+                      >
+                        {moveMutation.isPending ? 'Enregistrement…' : 'Déplacer le rendez-vous'}
+                      </button>
+                      <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setMoving(false)}>
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* transitions */}
             {(NEXT_STATUSES[b.status].length > 0 || BACK_STATUSES[b.status].length > 0) && (
