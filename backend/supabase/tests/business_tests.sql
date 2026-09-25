@@ -733,4 +733,108 @@ begin
   end if;
 end $$;
 
+-- ---------------------------------------------------------------
+-- T15 — SMS (0021): J-1 candidates need ≥7 days lead, claim is idempotent, ledger is admin-only
+-- ---------------------------------------------------------------
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  d date := current_setting('test.day')::date + 21;
+  b jsonb;
+begin
+  b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_sides","vlt_percent":20}]', (d + time '10:00') at time zone 'Europe/Paris',
+    'T15 Early', '06 12 34 56 78', null, null, 1, '00000000-0000-0000-0000-00000000000a', null);
+  perform set_config('test.t15_early', b->>'id', false);
+  b := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_sides","vlt_percent":20}]', (d + time '14:00') at time zone 'Europe/Paris',
+    'T15 Late', '0612345679', null, null, 1, null, null);
+  perform set_config('test.t15_late', b->>'id', false);
+end $$;
+reset role;
+
+-- move both to TOMORROW (workshop tz), confirmed; one booked 10 days ago, one 2 days ago
+update public.bookings
+   set status = 'confirmed',
+       slot_start = (((now() at time zone 'Europe/Paris')::date + 1) + time '10:00') at time zone 'Europe/Paris',
+       slot_end   = (((now() at time zone 'Europe/Paris')::date + 1) + time '10:00') at time zone 'Europe/Paris' + (slot_end - slot_start),
+       created_at = now() - interval '10 days'
+ where id = current_setting('test.t15_early')::uuid;
+update public.bookings
+   set status = 'confirmed',
+       slot_start = (((now() at time zone 'Europe/Paris')::date + 1) + time '14:00') at time zone 'Europe/Paris',
+       slot_end   = (((now() at time zone 'Europe/Paris')::date + 1) + time '14:00') at time zone 'Europe/Paris' + (slot_end - slot_start),
+       created_at = now() - interval '2 days'
+ where id = current_setting('test.t15_late')::uuid;
+
+do $$
+declare
+  early uuid := current_setting('test.t15_early')::uuid;
+  late  uuid := current_setting('test.t15_late')::uuid;
+  st    timestamptz;
+  l1 uuid; l2 uuid;
+begin
+  if not exists (select 1 from public.sms_reminder_candidates() c where c = early) then
+    raise exception 'T15 booking made 10 days ahead is not a reminder candidate';
+  end if;
+  if exists (select 1 from public.sms_reminder_candidates() c where c = late) then
+    raise exception 'T15 booking made 2 days ahead must not get a reminder';
+  end if;
+
+  select slot_start into st from public.bookings where id = early;
+  l1 := public.sms_claim(early, 'reminder', st, '+33612345678');
+  l2 := public.sms_claim(early, 'reminder', st, '+33612345678');
+  if l1 is null or l2 is not null then raise exception 'T15 claim not idempotent (% / %)', l1, l2; end if;
+  -- in flight → no longer a candidate (no double send from a second cron run)
+  if exists (select 1 from public.sms_reminder_candidates() c where c = early) then
+    raise exception 'T15 in-flight reminder still a candidate';
+  end if;
+
+  update public.sms_log set status = 'failed' where id = l1;
+  if public.sms_claim(early, 'reminder', st, '+33612345678') is distinct from l1 then
+    raise exception 'T15 failed send not re-claimable';
+  end if;
+  if (select attempts from public.sms_log where id = l1) <> 2 then raise exception 'T15 attempts not counted'; end if;
+  update public.sms_log set status = 'sent', provider_sid = 'SMtest' where id = l1;
+  if exists (select 1 from public.sms_reminder_candidates() c where c = early) then
+    raise exception 'T15 sent reminder still a candidate';
+  end if;
+  if public.sms_claim(early, 'reminder', st, '+33612345678') is not null then
+    raise exception 'T15 sent reminder re-claimed';
+  end if;
+
+  -- a reschedule (new slot_start) is a different message
+  if public.sms_claim(early, 'reminder', st + interval '1 day', '+33612345678') is null then
+    raise exception 'T15 rescheduled slot could not claim its own reminder';
+  end if;
+
+  -- server-only RPCs
+  if has_function_privilege('anon', 'public.sms_reminder_candidates()', 'execute')
+     or has_function_privilege('authenticated', 'public.sms_claim(uuid, text, timestamptz, text)', 'execute') then
+    raise exception 'T15 SMS RPCs exposed to API roles';
+  end if;
+end $$;
+
+-- ledger: invisible to the client, readable by the admin, not writable by either
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  if exists (select 1 from public.sms_log) then raise exception 'T15 client can read sms_log'; end if;
+  begin
+    insert into public.sms_log (booking_id, kind, slot_start) values (current_setting('test.t15_early')::uuid, 'completed', now());
+    raise exception 'T15 client insert into sms_log accepted';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+begin
+  if not exists (select 1 from public.sms_log) then raise exception 'T15 admin cannot read sms_log'; end if;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

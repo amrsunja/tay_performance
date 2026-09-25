@@ -19,7 +19,8 @@ backend/
     │   ├── 0006_storage.sql         # booking-photos (private) + brand-assets (public) buckets
     │   └── 0007_seed.sql            # catalog, hours, settings, pricing v1, starter taxonomy
     ├── functions/
-    │   └── send-booking-email/      # Resend dispatcher (webhooks + J-1 reminder)
+    │   ├── send-booking-email/      # Resend dispatcher (webhooks + J-1 reminder)
+    │   └── send-booking-sms/        # Twilio SMS: confirmed / J-1 (booked ≥7 days ahead) / completed + Google review
     ├── optional/
     │   └── cron_jobs.sql            # pg_cron: reminder, hold sweep, stale-anon purge (hosted only)
     └── tests/
@@ -60,6 +61,10 @@ supabase db push                 # applies migrations
 supabase secrets set RESEND_API_KEY=... EMAIL_FROM="Tay Performance <rdv@yourdomain>" \
                      WORKSHOP_NOTIFY_EMAIL=... WEBHOOK_SECRET=<random-64-chars>
 supabase functions deploy send-booking-email
+
+# SMS — same Twilio account / Messaging Service as Auth phone OTP
+supabase secrets set TWILIO_ACCOUNT_SID=AC... TWILIO_AUTH_TOKEN=... TWILIO_MESSAGING_SERVICE_SID=MG...
+supabase functions deploy send-booking-sms
 ```
 
 Then in the dashboard:
@@ -68,6 +73,9 @@ Then in the dashboard:
 3. **Database → Webhooks**: two webhooks calling the `send-booking-email` function URL,
    with an `x-webhook-secret: <WEBHOOK_SECRET>` header:
    - INSERT on `public.bookings`
+   - INSERT on `public.booking_status_history`
+
+   One more webhook for SMS, calling the `send-booking-sms` function URL (same header):
    - INSERT on `public.booking_status_history`
 4. **SQL editor**: run `optional/cron_jobs.sql` (after storing the two Vault secrets it names).
 5. Create admin users — see "Admin runbook" below.

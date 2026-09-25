@@ -26,6 +26,24 @@ select cron.schedule(
   $$
 );
 
+-- 1b) J-1 SMS reminder (send-booking-sms) — 16:00 UTC = 18:00 Paris in summer / 17:00 in winter.
+--     Only confirmed bookings made >= app_settings.sms_reminder_min_lead_days (7) before the RDV.
+select cron.schedule(
+  'booking-sms-reminder-j1',
+  '0 16 * * *',
+  $$
+  select net.http_post(
+    url     := 'https://<PROJECT-REF>.supabase.co/functions/v1/send-booking-sms',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'),
+      'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'webhook_secret')
+    ),
+    body    := '{"type":"reminder"}'::jsonb
+  );
+  $$
+);
+
 -- 2) Expired holds sweep (holds are also purged inline by the RPCs — this is belt & braces)
 select cron.schedule(
   'purge-expired-holds',

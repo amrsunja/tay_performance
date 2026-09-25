@@ -154,7 +154,19 @@ Edge Function `send-booking-email` (Deno + Resend; `RESEND_API_KEY` secret). Tri
 | J-1 reminder | client | pg_cron daily job selects tomorrow's confirmed bookings → invokes the function |
 | `→ completed` | client | thanks + link to portal (photos/warranty) |
 
-The function receives only ids, re-reads data with the service key, and must never include admin notes. SMS is V2 (ConfigPage already shows it as "V2").
+The function receives only ids, re-reads data with the service key, and must never include admin notes.
+
+### 12b. SMS (Twilio — `send-booking-sms`, migration 0021)
+
+Sent to `bookings.contact_phone` (normalised to E.164, FR default), through the same Twilio Messaging Service as Auth OTP. Text is folded to GSM-7 (1 segment = 153/160 chars instead of 67/70).
+
+| Event | Condition | Content |
+|---|---|---|
+| `→ confirmed` | from `requested` / `cancelled` / `no_show` (not the `in_progress → confirmed` step back), slot in the future | date, heure, réf., adresse, itinéraire, téléphone atelier |
+| J-1 reminder | still `confirmed`, RDV tomorrow (workshop tz), `slot_start − created_at ≥ sms_reminder_min_lead_days` (7) | date, heure, réf., adresse, itinéraire |
+| `in_progress → completed` | — | véhicule, réf., date + `google_review_url` |
+
+Idempotency: `sms_log` unique `(booking_id, kind, slot_start)` claimed via `sms_claim()` — retries / toggles never re-send; a reschedule gets its own reminder; failed sends are re-claimable. Kill switch: `app_settings.sms_enabled = false`. `sms_log` is admin-read-only (RLS).
 
 ## 13. Error code vocabulary (RPC → UI)
 

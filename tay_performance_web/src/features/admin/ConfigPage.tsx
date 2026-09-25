@@ -307,9 +307,21 @@ export default function ConfigPage() {
               </span>
             </div>
             <div className={styles.configRow}>
-              <span>SMS (passerelle)</span>
-              <span className="pill pill--muted">
-                <span aria-hidden>—</span> V2
+              <span>SMS de confirmation client</span>
+              <span className="pill pill--success">
+                <Icon name="check" size={12} /> Actif
+              </span>
+            </div>
+            <div className={styles.configRow}>
+              <span>SMS rappel J-1 (réservé ≥ 7 j avant)</span>
+              <span className="pill pill--success">
+                <Icon name="check" size={12} /> Actif
+              </span>
+            </div>
+            <div className={styles.configRow}>
+              <span>SMS fin de pose + avis Google</span>
+              <span className="pill pill--success">
+                <Icon name="check" size={12} /> Actif
               </span>
             </div>
           </div>
