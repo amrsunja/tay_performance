@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Modal from '../../components/ui/Modal'
 import PhoneInput from '../../components/ui/PhoneInput'
-import { formatPhoneDisplay, normalizePhone } from '../../lib/phone'
+import { e164FromStored, formatPhoneDisplay } from '../../lib/phone'
 import { isValidEmail } from '../../api/auth'
 import StatusPill from '../../components/ui/StatusPill'
 import { getClientBookings, listClients, updateClientProfile } from '../../api/admin'
@@ -126,7 +126,7 @@ function ClientDrawer({ client, onClose }: { client: AdminClientRow; onClose: ()
   const queryClient = useQueryClient()
   const [fullName, setFullName] = useState(client.fullName ?? '')
   const [email, setEmail] = useState(client.email ?? '')
-  const [phone, setPhone] = useState(normalizePhone(client.phone ?? '') ?? '')
+  const [phone, setPhone] = useState(e164FromStored(client.phone))
   const [error, setError] = useState('')
 
   const bookings = useQuery({

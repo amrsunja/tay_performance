@@ -717,4 +717,20 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T14 — auth phones (no "+") land in profiles as E.164 (0020)
+-- ---------------------------------------------------------------
+insert into auth.users (id, phone, is_anonymous) values ('00000000-0000-0000-0000-0000000000c1', '33612345678', false);
+insert into auth.users (id, is_anonymous) values ('00000000-0000-0000-0000-0000000000c2', true);
+update auth.users set phone = '33698765432' where id = '00000000-0000-0000-0000-0000000000c2';
+do $$
+begin
+  if (select phone from public.profiles where id = '00000000-0000-0000-0000-0000000000c1') <> '+33612345678' then
+    raise exception 'T14 sign-up phone not E.164';
+  end if;
+  if (select phone from public.profiles where id = '00000000-0000-0000-0000-0000000000c2') <> '+33698765432' then
+    raise exception 'T14 linked phone not E.164';
+  end if;
+end $$;
+
 select 'ALL TESTS PASSED' as result;

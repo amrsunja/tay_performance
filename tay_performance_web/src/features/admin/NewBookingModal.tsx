@@ -63,7 +63,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
         slotStartISO: slotStart,
         contactName,
         contactPhone,
-        contactEmail: contactEmail.trim(),
+        contactEmail: contactEmail.trim() || null,
         clientNotes: notes || null,
         priceOverride: priceOverride,
       }),
@@ -232,7 +232,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
             <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
               <input className="field" placeholder="Nom du client *" value={contactName} onChange={(e) => setContactName(e.target.value)} />
               <PhoneInput value={contactPhone} onChange={setContactPhone} aria-label="Téléphone *" />
-              <input className="field" placeholder="E-mail *" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+              <input className="field" placeholder="E-mail (facultatif)" type="email" aria-invalid={(contactEmail.trim() !== '' && !isValidEmail(contactEmail.trim())) || undefined} value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
               <input className="field" placeholder="Note" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
@@ -248,7 +248,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                 quote.lines.length === 0 ||
                 contactName.trim().length === 0 ||
                 !contactPhone ||
-                !isValidEmail(contactEmail.trim()) ||
+                (contactEmail.trim() !== '' && !isValidEmail(contactEmail.trim())) ||
                 !priceValid
               }
               onClick={() => createMutation.mutate()}

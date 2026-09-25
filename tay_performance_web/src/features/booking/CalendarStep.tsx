@@ -6,7 +6,7 @@ import { getDaySlots, getMonthAvailability, holdSlot, releaseHold } from '../../
 import { createBooking } from '../../api/bookings'
 import { getMyProfile } from '../../api/profile'
 import { isValidEmail } from '../../api/auth'
-import { normalizePhone } from '../../lib/phone'
+import { e164FromStored } from '../../lib/phone'
 import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
 import type { ResolvedVehicle, SlotInfo } from '../../types/api'
@@ -45,7 +45,8 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
     enabled: Boolean(userId),
   })
   const profileName = profile.data?.fullName ?? ''
-  const profilePhone = normalizePhone(profile.data?.phone ?? '') ?? ''
+  // profile first, then the phone verified on the session (OTP sign-in)
+  const profilePhone = e164FromStored(profile.data?.phone) || e164FromStored(session?.user.phone)
   const profileEmail = profile.data?.email ?? ''
   const profileComplete = profileName.length > 0 && profilePhone.length > 0 && isValidEmail(profileEmail)
 

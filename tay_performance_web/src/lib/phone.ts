@@ -99,6 +99,16 @@ export function normalizePhone(input: string): string | null {
   return null
 }
 
+/** Phone as stored by Supabase Auth / older profiles — bare international digits
+    ("33612345678", no "+") — or any format normalizePhone accepts → E.164, '' if unusable. */
+export function e164FromStored(input: string | null | undefined): string {
+  if (!input) return ''
+  const normalized = normalizePhone(input)
+  if (normalized) return normalized
+  const digits = input.replace(/[\s.\-()]/g, '')
+  return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : ''
+}
+
 export function isValidPhone(input: string): boolean {
   return normalizePhone(input) !== null
 }
