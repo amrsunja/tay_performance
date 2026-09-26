@@ -837,4 +837,74 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T16 — notification dispatch (0022): triggers installed, never block a write,
+--        email_claim idempotent per recipient, ledger + dispatcher server-only
+-- ---------------------------------------------------------------
+do $$
+declare
+  bid uuid := current_setting('test.t15_early')::uuid;
+  st  timestamptz;
+  l1 uuid; l2 uuid; l3 uuid;
+begin
+  if not exists (select 1 from pg_trigger where tgname = 'bookings_notify'
+                  and tgrelid = 'public.bookings'::regclass) then
+    raise exception 'T16 bookings_notify trigger missing';
+  end if;
+  if not exists (select 1 from pg_trigger where tgname = 'booking_status_history_notify'
+                  and tgrelid = 'public.booking_status_history'::regclass) then
+    raise exception 'T16 booking_status_history_notify trigger missing';
+  end if;
+  -- no pg_net / Vault here: the dispatcher is a silent no-op, the insert goes through
+  if public._notify_edge('send-booking-sms', '{"type":"reminder"}') is not null then
+    raise exception 'T16 _notify_edge should be a no-op without pg_net';
+  end if;
+  insert into public.booking_status_history (booking_id, from_status, to_status, note)
+  values (bid, 'confirmed', 'confirmed', 'price|1|2|t16');
+
+  select slot_start into st from public.bookings where id = bid;
+  l1 := public.email_claim(bid, 'confirmed', st, 'Client@Example.com ');
+  l2 := public.email_claim(bid, 'confirmed', st, 'client@example.com');
+  l3 := public.email_claim(bid, 'confirmed', st, 'booker@example.com');
+  if l1 is null or l2 is not null then raise exception 'T16 email claim not idempotent (% / %)', l1, l2; end if;
+  if l3 is null then raise exception 'T16 second recipient blocked by first'; end if;
+  update public.email_log set status = 'failed' where id = l1;
+  if public.email_claim(bid, 'confirmed', st, 'client@example.com') is distinct from l1 then
+    raise exception 'T16 failed email not re-claimable';
+  end if;
+  update public.email_log set status = 'sent' where id = l1;
+  if public.email_claim(bid, 'confirmed', st, 'client@example.com') is not null then
+    raise exception 'T16 sent email re-claimed';
+  end if;
+  if public.email_claim(bid, 'rescheduled', st + interval '1 day', 'client@example.com') is null then
+    raise exception 'T16 new slot could not claim its own mail';
+  end if;
+
+  if has_function_privilege('authenticated', 'public.email_claim(uuid, text, timestamptz, text)', 'execute')
+     or has_function_privilege('anon',          'public._notify_edge(text, jsonb)', 'execute')
+     or has_function_privilege('authenticated', 'public._notify_edge(text, jsonb)', 'execute') then
+    raise exception 'T16 notification RPCs exposed to API roles';
+  end if;
+end $$;
+
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  if exists (select 1 from public.email_log) then raise exception 'T16 client can read email_log'; end if;
+  begin
+    perform public._notify_edge('send-booking-sms', '{"type":"reminder"}');
+    raise exception 'T16 client can call _notify_edge';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+begin
+  if not exists (select 1 from public.email_log) then raise exception 'T16 admin cannot read email_log'; end if;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

@@ -1,48 +1,10 @@
--- OPTIONAL — run once on the HOSTED project (SQL editor) after deploying the
--- send-booking-email Edge Function. Not a migration: it embeds project-specific
--- values. Replace <PROJECT-REF> and store the secrets in Vault first:
---
---   select vault.create_secret('<service-role-key>', 'service_role_key');
---   select vault.create_secret('<same-value-as-WEBHOOK_SECRET>', 'webhook_secret');
+-- OPTIONAL — housekeeping jobs, run once on the HOSTED project (SQL editor).
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- 1) J-1 reminder — every day at 18:00 Europe/Paris (16:00 UTC in summer, adjust in winter
---    or keep 17:00 UTC year-round for simplicity)
-select cron.schedule(
-  'booking-reminder-j1',
-  '0 17 * * *',
-  $$
-  select net.http_post(
-    url     := 'https://<PROJECT-REF>.supabase.co/functions/v1/send-booking-email',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'),
-      'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'webhook_secret')
-    ),
-    body    := '{"type":"reminder"}'::jsonb
-  );
-  $$
-);
-
--- 1b) J-1 SMS reminder (send-booking-sms) — 16:00 UTC = 18:00 Paris in summer / 17:00 in winter.
---     Only confirmed bookings made >= app_settings.sms_reminder_min_lead_days (7) before the RDV.
-select cron.schedule(
-  'booking-sms-reminder-j1',
-  '0 16 * * *',
-  $$
-  select net.http_post(
-    url     := 'https://<PROJECT-REF>.supabase.co/functions/v1/send-booking-sms',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'),
-      'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'webhook_secret')
-    ),
-    body    := '{"type":"reminder"}'::jsonb
-  );
-  $$
-);
+-- 1) J-1 reminders (email + SMS) — moved to migration 0022_notification_dispatch.sql
+--    (scheduled by `supabase db push`, URL + secret read from Vault). Do not re-add them here.
 
 -- 2) Expired holds sweep (holds are also purged inline by the RPCs — this is belt & braces)
 select cron.schedule(

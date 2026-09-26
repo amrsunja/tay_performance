@@ -144,7 +144,7 @@ Admin edits are staged on a `draft` version (`clone_pricing_version()` RPC: copy
 
 ## 12. Notifications (V1 = email only)
 
-Edge Function `send-booking-email` (Deno + Resend; `RESEND_API_KEY` secret). Trigger path: Database Webhook on `booking_status_history` insert (+ on `bookings` insert) → Edge Function → compose French email by event type:
+Edge Function `send-booking-email` (Deno + Resend; `RESEND_API_KEY` secret). Trigger path (migration 0022): AFTER INSERT triggers on `booking_status_history` + `bookings` → `_notify_edge()` (pg_net, URL + secret from Vault) → Edge Function. Admin-created bookings (`null → confirmed`) get the confirmation mail/SMS, not "demande reçue". Every mail is claimed/logged in `email_log` → compose French email by event type:
 
 | Event | To | Template |
 |---|---|---|

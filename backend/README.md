@@ -22,7 +22,7 @@ backend/
     │   ├── send-booking-email/      # Resend dispatcher (webhooks + J-1 reminder)
     │   └── send-booking-sms/        # Twilio SMS: confirmed / J-1 (booked ≥7 days ahead) / completed + Google review
     ├── optional/
-    │   └── cron_jobs.sql            # pg_cron: reminder, hold sweep, stale-anon purge (hosted only)
+    │   └── cron_jobs.sql            # pg_cron housekeeping: hold sweep, stale-anon purge (hosted only)
     └── tests/
         ├── harness_stub.sql         # bare-Postgres stubs for auth/storage (tests only!)
         ├── business_tests.sql       # T1–T10: pricing, legality, RLS, holds, transitions
@@ -67,18 +67,37 @@ supabase secrets set TWILIO_ACCOUNT_SID=AC... TWILIO_AUTH_TOKEN=... TWILIO_MESSA
 supabase functions deploy send-booking-sms
 ```
 
-Then in the dashboard:
+`EMAIL_FROM` must be on a domain **verified in Resend** — with the default `onboarding@resend.dev`
+Resend only delivers to the account owner. Deploy from `backend/` so `config.toml`
+(`verify_jwt = false`) is applied.
+
+Then:
 1. **Auth → Providers**: Anonymous ON; Email ON (magic link), *Disable signup* for email.
 2. **Auth → Attack protection**: enable CAPTCHA (Turnstile) — protects anonymous sign-in.
-3. **Database → Webhooks**: two webhooks calling the `send-booking-email` function URL,
-   with an `x-webhook-secret: <WEBHOOK_SECRET>` header:
-   - INSERT on `public.bookings`
-   - INSERT on `public.booking_status_history`
-
-   One more webhook for SMS, calling the `send-booking-sms` function URL (same header):
-   - INSERT on `public.booking_status_history`
-4. **SQL editor**: run `optional/cron_jobs.sql` (after storing the two Vault secrets it names).
+3. **SQL editor — Vault secrets** read by the notification triggers + reminder cron (migration 0022):
+   ```sql
+   select vault.create_secret('https://<PROJECT-REF>.supabase.co', 'project_url');
+   select vault.create_secret('<same value as WEBHOOK_SECRET>',     'webhook_secret');
+   ```
+   No Database Webhook to create in the dashboard: 0022 installs the triggers
+   (`bookings_notify`, `booking_status_history_notify`), drops any old dashboard webhooks on
+   those tables and schedules `booking-reminder-j1` / `booking-sms-reminder-j1` (16:00 UTC).
+4. **SQL editor**: run `optional/cron_jobs.sql` (housekeeping jobs only).
 5. Create admin users — see "Admin runbook" below.
+
+### Debugging notifications
+
+```sql
+-- what each function answered (body = {"ok":true,"result":[...]} with the reason per message)
+select created, status_code, timed_out, error_msg, left(content::text, 300)
+  from net._http_response order by created desc limit 20;
+select kind, to_email, status, error, created_at from email_log order by created_at desc limit 20;
+select kind, to_phone, status, error, created_at from sms_log   order by created_at desc limit 20;
+select j.jobname, d.status, d.return_message, d.start_time
+  from cron.job_run_details d join cron.job j using (jobid) order by d.start_time desc limit 10;
+```
+SMS J-1 reminders only go to bookings made ≥ `app_settings.sms_reminder_min_lead_days` (7) days
+before the RDV — set it to `0` to test with a booking for tomorrow.
 
 ## Admin runbook (creating admin accounts)
 

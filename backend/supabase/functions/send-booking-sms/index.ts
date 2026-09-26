@@ -1,9 +1,10 @@
 // send-booking-sms — client SMS dispatcher (Twilio Programmable Messaging)
 // Same Twilio account / Messaging Service as Supabase Auth phone OTP.
 //
-// Invoked by:
-//   • Database Webhook — INSERT on public.booking_status_history
-//       → `confirmed` (admin validated the RDV) and `in_progress → completed` (pose terminée + avis Google)
+// Invoked by (migration 0022, public._notify_edge → pg_net):
+//   • trigger AFTER INSERT on public.booking_status_history
+//       → `confirmed` (admin validated the RDV, or created it directly as confirmed)
+//         and `in_progress → completed` (pose terminée + avis Google)
 //   • pg_cron — { "type": "reminder" } once a day
 //       → J-1 reminder, only for confirmed bookings made ≥ sms_reminder_min_lead_days before the RDV
 //
@@ -160,65 +161,75 @@ async function twilioSend(to: string, body: string): Promise<{ sid?: string; err
   return { sid: json.sid };
 }
 
-async function dispatch(kind: SmsKind, b: Booking, s: Settings): Promise<void> {
+async function dispatch(kind: SmsKind, b: Booking, s: Settings): Promise<string> {
   const to = toE164(b.contact_phone);
   const { data: logId, error: claimErr } = await supabase.rpc("sms_claim", {
     p_booking_id: b.id, p_kind: kind, p_slot_start: b.slot_start, p_to: to,
   });
   if (claimErr) throw new Error(`sms_claim: ${claimErr.message}`);
-  if (!logId) return; // already sent / in flight for this slot
+  if (!logId) return `${kind}:duplicate`; // already sent / in flight for this slot
 
   const done = (patch: Record<string, unknown>) =>
     supabase.from("sms_log").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", logId);
 
   if (!to) {
     await done({ status: "skipped", error: `INVALID_PHONE: ${b.contact_phone ?? "null"}` });
-    return;
+    return `${kind}:invalid_phone`;
   }
   const r = await twilioSend(to, toGsm7(render(kind, b, s)));
   if (r.error) console.error("twilio", kind, b.reference, r.error);
-  await done(r.error ? { status: "failed", error: r.error } : { status: "sent", provider_sid: r.sid });
+  const { error: logErr } = await done(r.error ? { status: "failed", error: r.error } : { status: "sent", provider_sid: r.sid });
+  if (logErr) console.error("sms_log update", logId, logErr.message);
+  return r.error ? `${kind}:failed ${r.error}` : `${kind}:sent ${r.sid}`;
 }
 
 // ---------------------------------------------------------------- handlers
 
-async function handleStatusRow(rec: { booking_id: string; from_status: string | null; to_status: string; note: string | null }) {
-  if (rec.from_status === null || rec.from_status === rec.to_status) return; // creation / price / reschedule rows
+async function handleStatusRow(
+  rec: { booking_id: string; from_status: string | null; to_status: string; note: string | null },
+): Promise<string> {
+  // admin_create_booking inserts the booking directly as `confirmed` (history row null → confirmed):
+  // that IS the confirmation. Client bookings start with null → requested (no SMS).
+  const adminCreated = rec.from_status === null && rec.to_status === "confirmed";
+  if (!adminCreated && (rec.from_status === null || rec.from_status === rec.to_status)) return "ignored:not_a_transition";
+
   let kind: SmsKind | null = null;
   if (rec.to_status === "confirmed" && rec.from_status !== "in_progress") kind = "confirmed"; // step-back ≠ new confirmation
   if (rec.to_status === "completed" && rec.from_status === "in_progress") kind = "completed";
-  if (!kind) return;
+  if (!kind) return `ignored:${rec.from_status}->${rec.to_status}`;
 
   const s = await getSettings();
-  if (!s.enabled) return;
+  if (!s.enabled) return "ignored:sms_disabled";
   const b = await getBooking(rec.booking_id);
-  if (!b || b.status !== rec.to_status) return; // status moved again before we ran
-  if (kind === "confirmed" && new Date(b.slot_start) < new Date()) return;
-  await dispatch(kind, b, s);
+  if (!b) return "error:booking_not_found";
+  if (b.status !== rec.to_status) return `ignored:status_moved_to_${b.status}`; // moved again before we ran
+  if (kind === "confirmed" && new Date(b.slot_start) < new Date()) return "ignored:slot_in_past";
+  return await dispatch(kind, b, s);
 }
 
-async function handleReminders(): Promise<number> {
+async function handleReminders(): Promise<string[]> {
   const s = await getSettings();
-  if (!s.enabled) return 0;
+  if (!s.enabled) return ["ignored:sms_disabled"];
   const { data: ids, error } = await supabase.rpc("sms_reminder_candidates");
   if (error) throw new Error(`sms_reminder_candidates: ${error.message}`);
-  let n = 0;
+  const out: string[] = [];
   for (const id of (ids ?? []) as string[]) {
     const b = await getBooking(id);
-    if (!b) continue;
+    if (!b) { out.push(`${id}:booking_not_found`); continue; }
     try {
-      await dispatch("reminder", b, s);
-      n++;
+      out.push(`${b.reference}:${await dispatch("reminder", b, s)}`);
     } catch (e) {
       console.error("reminder", id, e); // one bad row must not block the others
+      out.push(`${b.reference}:error ${e instanceof Error ? e.message : e}`);
     }
   }
-  return n;
+  return out;
 }
 
 Deno.serve(async (req) => {
   try {
     if (!WEBHOOK_SECRET || req.headers.get("x-webhook-secret") !== WEBHOOK_SECRET) {
+      console.error("forbidden: x-webhook-secret missing or different from WEBHOOK_SECRET");
       return new Response("forbidden", { status: 403 });
     }
     if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_MSID) {
@@ -226,15 +237,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, error: "not_configured" }), { status: 500 });
     }
     const payload = await req.json();
-    let processed = 0;
+    let result: string | string[] = "ignored:unknown_payload";
     if (payload?.type === "reminder") {
-      processed = await handleReminders();
+      result = await handleReminders();
     } else if (payload?.type === "INSERT" && payload?.table === "booking_status_history") {
-      await handleStatusRow(payload.record);
+      result = await handleStatusRow(payload.record);
     }
-    return new Response(JSON.stringify({ ok: true, processed }), { headers: { "Content-Type": "application/json" } });
+    console.log("send-booking-sms", JSON.stringify(result));
+    // the body lands in net._http_response.content — readable from the SQL editor
+    return new Response(JSON.stringify({ ok: true, result }), { headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
-    return new Response(JSON.stringify({ ok: false }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : String(e) }), { status: 500 });
   }
 });
