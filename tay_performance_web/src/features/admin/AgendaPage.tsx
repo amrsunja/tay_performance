@@ -6,7 +6,7 @@ import type { AdminBookingRow } from '../../types/api'
 import BookingDrawer from './BookingDrawer'
 import styles from './admin.module.css'
 
-const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const OPEN_HOUR = 8
 const CLOSE_HOUR = 19
 const HOURS = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i)
@@ -41,6 +41,13 @@ function mondayOf(offsetWeeks: number): Date {
   return monday
 }
 
+/** DST-safe: calendar arithmetic, not 24h multiples */
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -51,8 +58,8 @@ export default function AgendaPage() {
 
   const monday = useMemo(() => mondayOf(weekOffset), [weekOffset])
   const range = useMemo(() => {
-    const end = new Date(monday.getTime() + 6 * 24 * 3600_000)
-    return { from: monday.toISOString(), to: end.toISOString() }
+    // exclusive upper bound = next Monday 00:00 (covers all of Sunday)
+    return { from: monday.toISOString(), to: addDays(monday, DAYS.length).toISOString() }
   }, [monday])
 
   const bookings = useQuery({
@@ -66,13 +73,12 @@ export default function AgendaPage() {
   const blackoutSet = useMemo(() => new Set((blackouts.data ?? []).map((b) => b.day)), [blackouts.data])
 
   const todayIndex = useMemo(() => {
-    const now = new Date()
-    const idx = Math.floor((now.getTime() - monday.getTime()) / (24 * 3600_000))
-    return idx >= 0 && idx < 6 ? idx : -1
+    const today = isoDate(new Date())
+    return DAYS.findIndex((_, i) => isoDate(addDays(monday, i)) === today)
   }, [monday])
 
   const weekLabel = useMemo(() => {
-    const end = new Date(monday.getTime() + 5 * 24 * 3600_000)
+    const end = addDays(monday, DAYS.length - 1)
     const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' })
     return `${fmt.format(monday)} → ${fmt.format(end)}`
   }, [monday])
@@ -140,7 +146,7 @@ export default function AgendaPage() {
 
           {/* day columns */}
           {DAYS.map((d, dayIndex) => {
-            const dayDate = new Date(monday.getTime() + dayIndex * 24 * 3600_000)
+            const dayDate = addDays(monday, dayIndex)
             const dayISO = isoDate(dayDate)
             const dayHours = (hours.data ?? []).find((h) => h.weekday === dayIndex + 1)
             const isBlackout = blackoutSet.has(dayISO)
