@@ -6,7 +6,10 @@
 
 export type UserRole = 'admin' | 'staff' | 'client'
 
-export type ServiceType = 'tint' | 'detailing' | 'wrapping' | 'mechanical'
+export type ServiceType = 'tint' | 'detailing' | 'wrapping' | 'mechanical' | 'custom'
+
+/** Prestations sur devis proposées par l'atelier — pré-remplissent le titre d'une demande personnalisée. */
+export const CUSTOM_SERVICES = ['Covering', 'Sellerie', 'Detailing', 'Éclairage intérieur', 'Autre demande'] as const
 
 export type BodyStyleCode =
   | 'citadine_3p'

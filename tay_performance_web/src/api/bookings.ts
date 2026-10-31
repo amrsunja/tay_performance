@@ -74,8 +74,11 @@ interface BookingSelectRow {
   legal_flag: string
   price_total: number | null
   client_notes: string | null
-  variant_id: string
-  contact_name: string
+  variant_id: string | null
+  contact_name: string | null
+  custom_title: string | null
+  custom_vehicle: string | null
+  admin_message: string | null
   for_other: boolean
   price_overridden: boolean
   rescheduled_at: string | null
@@ -91,6 +94,7 @@ interface BookingSelectRow {
 
 const BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
   price_total, client_notes, variant_id, contact_name, for_other, price_overridden, rescheduled_at,
+  custom_title, custom_vehicle, admin_message,
   booking_tint_specs(zone_code, vlt_percent, price_delta, is_legal),
   bookings_warranty(warranty_years),
   booking_photos(kind, storage_path),
@@ -112,13 +116,15 @@ function mapBookingRow(b: BookingSelectRow): MyBookingRow {
     priceTotal: b.price_total == null ? null : Number(b.price_total),
     clientNotes: b.client_notes,
     variantId: b.variant_id,
-    contactName: b.contact_name,
+    isCustom: b.custom_title != null,
+    adminMessage: b.admin_message,
+    contactName: b.contact_name ?? '',
     forOther: Boolean(b.for_other),
     priceOverridden: Boolean(b.price_overridden),
     rescheduledAt: b.rescheduled_at ?? null,
-    vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
-    bodyLabel: chain?.body_styles?.label_fr ?? '',
-    badge: (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
+    vehicleLabel: b.custom_title ?? `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
+    bodyLabel: b.custom_title ? b.custom_vehicle ?? '' : chain?.body_styles?.label_fr ?? '',
+    badge: b.custom_title ? b.custom_title.slice(0, 2).toUpperCase() : (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
     specs: (b.booking_tint_specs ?? []).map((s) => ({
       zone: s.zone_code as TintZoneCode,
       vltPercent: Number(s.vlt_percent),

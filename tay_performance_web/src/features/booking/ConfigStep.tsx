@@ -24,7 +24,7 @@ const PRESETS: { label: string; zones: TintZoneCode[] }[] = [
 ]
 
 /** TLV = taux de lumière visible (ex-"VLT"). 5 % = le plus foncé. */
-function TlvPicker({
+export function TlvPicker({
   value,
   onChange,
   front,

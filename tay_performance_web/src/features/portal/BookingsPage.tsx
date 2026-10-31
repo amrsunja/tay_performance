@@ -8,8 +8,9 @@ import { useReveal } from '../../hooks/useReveal'
 import { useAuth } from '../../auth/AuthProvider'
 import { cancelBooking, getMyBookingHistory, getMyBookings, photoUrl } from '../../api/bookings'
 import { getCatalog } from '../../api/catalog'
+import { cancelServiceRequest, getServiceRequests } from '../../api/serviceRequests'
 import { errorMessage, supabase } from '../../lib/supabase'
-import type { MyBookingRow } from '../../types/api'
+import type { MyBookingRow, ServiceRequestRow } from '../../types/api'
 import type { BookingStatus } from '../../types/domain'
 import { formatDuration, formatEuro, formatPrice } from '../booking/useBookingDraft'
 import Icon from '../../components/ui/Icon'
@@ -79,6 +80,57 @@ function BookingPhoto({ path, kind }: { path: string; kind: 'before' | 'after' }
   )
 }
 
+const REQUEST_PILL: Record<'new' | 'declined', { tone: string; label: string }> = {
+  new: { tone: 'pending', label: "En attente de l'appel de l'atelier" },
+  declined: { tone: 'danger', label: 'Non retenue' },
+}
+
+const requestDateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
+
+/** Personalized request not confirmed yet: once confirmed it becomes a normal booking card. */
+function RequestCard({
+  request,
+  onCancel,
+  cancelPending,
+}: {
+  request: ServiceRequestRow
+  onCancel: (id: string) => void
+  cancelPending: boolean
+}) {
+  const pill = REQUEST_PILL[request.status as 'new' | 'declined']
+  return (
+    <article className={styles.bookingCard}>
+      <div className={styles.bookingHead}>
+        <div>
+          <span className={`mono ${styles.bookingRef}`}>{request.reference}</span>
+          <h2 className={`sat ${styles.bookingTitle}`}>{request.serviceLabel}</h2>
+          <div className={`mono ${styles.bookingWhen}`}>
+            Demande du {requestDateFmt.format(new Date(request.createdAt))}
+            {request.vehicleText ? ` · ${request.vehicleText}` : ''}
+          </div>
+        </div>
+        <div className={styles.bookingHeadRight}>
+          <span className={`pill pill--${pill.tone}`}>
+            <span className="pill__dot" aria-hidden />
+            {pill.label}
+          </span>
+        </div>
+      </div>
+      <p className={styles.bookingNotes}>« {request.message} »</p>
+      {request.status === 'declined' && request.adminReply && (
+        <div className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>Réponse de l'atelier : {request.adminReply}</div>
+      )}
+      {request.status === 'new' && (
+        <div className={styles.bookingActions}>
+          <button type="button" className={styles.dangerLink} disabled={cancelPending} onClick={() => onCancel(request.id)}>
+            Annuler ma demande
+          </button>
+        </div>
+      )}
+    </article>
+  )
+}
+
 function BookingCard({
   booking,
   delay,
@@ -117,6 +169,9 @@ function BookingCard({
         <div>
           <span className={`mono ${styles.bookingRef}`}>{booking.reference}</span>
           <h2 className={`sat ${styles.bookingTitle}`}>{booking.vehicleLabel}</h2>
+          {booking.isCustom && booking.bodyLabel && (
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>{booking.bodyLabel}</div>
+          )}
           {booking.forOther && (
             <span className="chip" style={{ fontSize: 11, marginBottom: 6, display: 'inline-block' }}>
               Pour {booking.contactName}
@@ -139,7 +194,7 @@ function BookingCard({
           </span>
           {booking.priceTotal == null && (
             <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'right', maxWidth: 220 }}>
-              l'atelier analyse votre véhicule et vous rappelle avec le prix
+              {booking.isCustom ? "l'atelier vous communique le prix" : "l'atelier analyse votre véhicule et vous rappelle avec le prix"}
             </span>
           )}
           {booking.priceOverridden && lastPriceChange && (
@@ -173,6 +228,9 @@ function BookingCard({
       </div>
 
       {booking.clientNotes && <p className={styles.bookingNotes}>« {booking.clientNotes} »</p>}
+      {booking.adminMessage && (
+        <div className="mono" style={{ fontSize: 12, color: 'var(--octane-300)' }}>Message de l'atelier : {booking.adminMessage}</div>
+      )}
 
       {/* history — status changes and price adjustments, same wording as the admin panel */}
       <div style={{ display: 'grid', gap: 6 }}>
@@ -212,14 +270,17 @@ function BookingCard({
       <div className={styles.bookingActions}>
         {(booking.status === 'requested' || booking.status === 'confirmed') && (
           <>
-            <button
-              type="button"
-              className="ghost"
-              style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
-              onClick={() => navigate(`/reserver?reschedule=${booking.id}`)}
-            >
-              Reprogrammer
-            </button>
+            {/* a custom job has no online slot logic: its date is agreed by phone */}
+            {!booking.isCustom && (
+              <button
+                type="button"
+                className="ghost"
+                style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }}
+                onClick={() => navigate(`/reserver?reschedule=${booking.id}`)}
+              >
+                Reprogrammer
+              </button>
+            )}
             <button
               type="button"
               className={styles.dangerLink}
@@ -231,7 +292,7 @@ function BookingCard({
             </button>
           </>
         )}
-        {booking.status === 'completed' && (
+        {booking.status === 'completed' && !booking.isCustom && (
           <Link
             to={`/reserver?variant=${booking.variantId}`}
             className="ghost"
@@ -259,6 +320,11 @@ export default function BookingsPage() {
   })
   const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 5 * 60_000 })
   const cutoffHours = catalog.data?.settings.cancellationCutoffHours ?? 24
+  const requests = useQuery({
+    queryKey: ['my-service-requests'],
+    queryFn: getServiceRequests,
+    enabled: Boolean(session),
+  })
 
   // realtime: own booking rows (RLS-scoped) → refresh statuses live
   useEffect(() => {
@@ -267,6 +333,9 @@ export default function BookingsPage() {
       .channel('my-bookings')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
         queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['my-service-requests'] })
       })
       .subscribe()
     return () => {
@@ -283,6 +352,19 @@ export default function BookingsPage() {
     onError: (e) => setError(errorMessage(e)),
   })
 
+  const cancelRequestMutation = useMutation({
+    mutationFn: (id: string) => cancelServiceRequest(id),
+    onSuccess: () => {
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['my-service-requests'] })
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
+
+  const onCancelRequest = (id: string) => {
+    if (window.confirm('Annuler cette demande ?')) cancelRequestMutation.mutate(id)
+  }
+
   const onCancel = (id: string) => {
     if (window.confirm('Annuler ce rendez-vous ?')) cancelMutation.mutate(id)
   }
@@ -290,6 +372,8 @@ export default function BookingsPage() {
   const list = bookings.data ?? []
   const upcoming = list.filter((b) => b.status === 'requested' || b.status === 'confirmed' || b.status === 'in_progress')
   const past = list.filter((b) => !upcoming.includes(b))
+  // confirmed ones live on as bookings; a cancelled one was his own decision, no need to keep it around
+  const openRequests = (requests.data ?? []).filter((r) => r.status === 'new' || r.status === 'declined')
 
   return (
     <div className={styles.page}>
@@ -321,7 +405,18 @@ export default function BookingsPage() {
           </div>
         )}
 
-        {list.length === 0 && !bookings.isPending && (
+        {openRequests.length > 0 && (
+          <>
+            <h2 className={`sat ${styles.groupTitle}`}>Demandes personnalisées</h2>
+            <div className={styles.bookingList}>
+              {openRequests.map((request) => (
+                <RequestCard key={request.id} request={request} onCancel={onCancelRequest} cancelPending={cancelRequestMutation.isPending} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {list.length === 0 && openRequests.length === 0 && !bookings.isPending && !requests.isPending && (
           <div
             data-reveal
             style={{

@@ -6,6 +6,9 @@
    ⚠ Vit ici et pas dans AddressPage : le footer en a besoin sur toutes les pages, et
    l'importer depuis une page chargée à la demande ramènerait cette page entière dans
    le bundle principal. */
+/** One car at a time for now (0019): the bay controls are hidden, the code and the setting stay. */
+export const SHOW_BAY_UI = false
+
 export const WORKSHOP = {
   name: 'Tay Performance',
   street: "19 Rue de l'Industrie",

@@ -6,13 +6,17 @@ import {
   addBlackout,
   changePassword,
   countFutureBookings,
+  getAdminSmsPhone,
   getBlackouts,
   getWorkshopHours,
   removeBlackout,
+  saveAdminSmsPhone,
   saveSetting,
   saveWorkshopDay,
 } from '../../api/configAdmin'
 import { errorMessage } from '../../lib/supabase'
+import { SHOW_BAY_UI } from '../../lib/workshop'
+import PhoneInput from '../../components/ui/PhoneInput'
 import type { WorkshopHoursRow } from '../../types/api'
 import Icon from '../../components/ui/Icon'
 import styles from './admin.module.css'
@@ -29,11 +33,24 @@ export default function ConfigPage() {
   const [blackoutReason, setBlackoutReason] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [alertPhone, setAlertPhone] = useState<string | null>(null)
 
   const hours = useQuery({ queryKey: ['config', 'hours'], queryFn: getWorkshopHours })
   const blackouts = useQuery({ queryKey: ['config', 'blackouts'], queryFn: getBlackouts })
   const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 60_000 })
   const futureCount = useQuery({ queryKey: ['config', 'future-count'], queryFn: countFutureBookings })
+
+  const savedAlertPhone = useQuery({ queryKey: ['config', 'admin-sms-phone'], queryFn: getAdminSmsPhone })
+  const alertPhoneValue = alertPhone ?? savedAlertPhone.data ?? ''
+  const alertPhoneMutation = useMutation({
+    mutationFn: () => saveAdminSmsPhone(alertPhoneValue, session!.user.id),
+    onSuccess: () => {
+      setAlertPhone(null)
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['config', 'admin-sms-phone'] })
+    },
+    onError: (e) => setError(errorMessage(e)),
+  })
 
   useEffect(() => {
     if (hours.data && days.length === 0) setDays(hours.data)
@@ -102,7 +119,7 @@ export default function ConfigPage() {
     <div>
       <div className={styles.pageHead}>
         <h1 className={`sat ${styles.pageTitle}`}>Configuration atelier</h1>
-        <p className={styles.pageSub}>Horaires, granularité des créneaux, baies et jours bloqués.</p>
+        <p className={styles.pageSub}>Horaires, granularité des créneaux et jours bloqués.</p>
       </div>
 
       {error && (
@@ -197,7 +214,7 @@ export default function ConfigPage() {
                 <option value="60">60 min</option>
               </select>
             </div>
-            <div className={styles.configRow}>
+            {SHOW_BAY_UI && <div className={styles.configRow}>
               <span>Nombre de baies en parallèle</span>
               <select
                 className={`field mono ${styles.selectField}`}
@@ -209,7 +226,7 @@ export default function ConfigPage() {
                 <option value="2">2 baies</option>
                 <option value="3">3 baies</option>
               </select>
-            </div>
+            </div>}
             <div className={styles.configRow}>
               <span>Fenêtre d'annulation client</span>
               <select
@@ -294,6 +311,26 @@ export default function ConfigPage() {
             <h2 className={`sat ${styles.blockTitle}`}>Notifications</h2>
           </div>
           <div className={styles.configCard}>
+            <div style={{ display: 'grid', gap: 8, padding: '12px 0', borderBottom: '1px solid rgba(37, 45, 56, 0.5)' }}>
+              <span style={{ fontSize: 13.5, color: 'var(--text-soft)' }}>Mon téléphone pour les alertes SMS</span>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                Nouvelle demande, nouveau devis, annulation par un client. Laissé vide : {settings?.contactPhone ?? 'numéro de l’atelier'}.
+              </span>
+              {savedAlertPhone.isSuccess && (
+                <PhoneInput key={savedAlertPhone.data} value={alertPhoneValue} onChange={setAlertPhone} required={false} aria-label="Téléphone pour les alertes SMS" />
+              )}
+              {alertPhone !== null && alertPhone !== (savedAlertPhone.data ?? '') && (
+                <button
+                  type="button"
+                  className="ghost"
+                  style={{ fontSize: 12, padding: '9px 14px', borderRadius: 10, justifySelf: 'start' }}
+                  disabled={alertPhoneMutation.isPending}
+                  onClick={() => alertPhoneMutation.mutate()}
+                >
+                  {alertPhoneMutation.isPending ? 'Enregistrement…' : 'Enregistrer le numéro'}
+                </button>
+              )}
+            </div>
             <div className={styles.configRow}>
               <span>E-mail de confirmation client</span>
               <span className="pill pill--success">

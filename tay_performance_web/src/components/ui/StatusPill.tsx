@@ -67,6 +67,7 @@ export function describeTransition(from: BookingStatus | null, to: BookingStatus
   }
   if (from === to) return n || 'Mise à jour'
   if (!from) {
+    if (n.startsWith('devis confirmé')) return `Demande personnalisée confirmée par l'atelier${n.replace('devis confirmé', '')}`
     if (n.includes('création manuelle')) return "Réservation créée par l'atelier" + (n.includes('prix modifié') ? ' (prix modifié)' : '')
     return 'Demande de rendez-vous envoyée par le client'
   }

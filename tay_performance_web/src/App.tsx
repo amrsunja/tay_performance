@@ -24,6 +24,7 @@ const TermsPage = lazy(() => import('./features/legal/TermsPage'))
 const AdminLayout = lazy(() => import('./features/admin/AdminLayout'))
 const AdminLoginPage = lazy(() => import('./features/admin/AdminLoginPage'))
 const QueuePage = lazy(() => import('./features/admin/QueuePage'))
+const DevisPage = lazy(() => import('./features/admin/DevisPage'))
 const AgendaPage = lazy(() => import('./features/admin/AgendaPage'))
 const ClientsPage = lazy(() => import('./features/admin/ClientsPage'))
 const VehiclesPage = lazy(() => import('./features/admin/VehiclesPage'))
@@ -71,6 +72,7 @@ export default function App() {
             }
           >
             <Route index element={<QueuePage />} />
+            <Route path="devis" element={<DevisPage />} />
             <Route path="agenda" element={<AgendaPage />} />
             <Route path="clients" element={<ClientsPage />} />
             <Route path="vehicules" element={<VehiclesPage />} />

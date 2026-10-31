@@ -3,14 +3,17 @@ import { useQuery } from '@tanstack/react-query'
 import { getBookingsBetween } from '../../api/admin'
 import { getBlackouts, getWorkshopHours } from '../../api/configAdmin'
 import type { AdminBookingRow } from '../../types/api'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
+import StatusPill from '../../components/ui/StatusPill'
 import BookingDrawer from './BookingDrawer'
 import styles from './admin.module.css'
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const OPEN_HOUR = 8
-const CLOSE_HOUR = 19
-const HOURS = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i)
+const DEFAULT_OPEN_HOUR = 8
+const DEFAULT_CLOSE_HOUR = 19
 const HOUR_PX = 52
+const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+const dayTitleFmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
 type Tone = 'amber' | 'blue' | 'green' | 'muted'
 const TONE_STYLES: Record<Tone, { border: string; bg: string }> = {
@@ -55,6 +58,9 @@ function isoDate(d: Date): string {
 export default function AgendaPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [openBooking, setOpenBooking] = useState<string | null>(null)
+  // phone: one day at a time — null = today when it is in the week, else Monday
+  const [pickedDay, setPickedDay] = useState<number | null>(null)
+  const isPhone = useMediaQuery('(max-width: 700px)')
 
   const monday = useMemo(() => mondayOf(weekOffset), [weekOffset])
   const range = useMemo(() => {
@@ -94,10 +100,104 @@ export default function AgendaPage() {
         start: startHour,
         duration: b.durationMin / 60,
         tone: toneOf(b),
-        sub: b.specs.map((s) => `${zoneShort(s.zone)} ${s.vltPercent}%${s.isLegal ? '' : ' (!)'}`).join(' · '),
+        sub: b.isCustom ? b.bodyLabel || b.contactName : b.specs.map((s) => `${zoneShort(s.zone)} ${s.vltPercent}%${s.isLegal ? '' : ' (!)'}`).join(' · '),
       }
     })
   }, [bookings.data])
+
+  // the grid grows when the admin booked a custom job outside the usual hours
+  const OPEN_HOUR = Math.min(DEFAULT_OPEN_HOUR, ...blocks.map((b) => Math.floor(b.start)))
+  const CLOSE_HOUR = Math.min(24, Math.max(DEFAULT_CLOSE_HOUR, ...blocks.map((b) => Math.ceil(b.start + b.duration))))
+  const HOURS = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i)
+
+  const shiftWeek = (delta: number) => {
+    setWeekOffset((w) => (delta === 0 ? 0 : w + delta))
+    setPickedDay(null)
+  }
+
+  if (isPhone) {
+    const dayIndex = pickedDay ?? (todayIndex >= 0 ? todayIndex : 0)
+    const dayDate = addDays(monday, dayIndex)
+    const dayHours = (hours.data ?? []).find((h) => h.weekday === dayIndex + 1)
+    const blackout = (blackouts.data ?? []).find((b) => b.day === isoDate(dayDate))
+    const dayBlocks = blocks.filter((b) => b.day === dayIndex)
+    return (
+      <div>
+        <div className={styles.pageHead}>
+          <h1 className={`sat ${styles.pageTitle}`}>Agenda atelier</h1>
+        </div>
+
+        <div className={styles.agendaWeekNav}>
+          <button type="button" className={styles.iconBtn} aria-label="Semaine précédente" onClick={() => shiftWeek(-1)}>‹</button>
+          <span className={`mono ${styles.agendaWeekLabel}`}>{weekLabel}</span>
+          <button type="button" className={styles.iconBtn} aria-label="Semaine suivante" onClick={() => shiftWeek(1)}>›</button>
+          {weekOffset !== 0 && (
+            <button type="button" className="ghost" style={{ fontSize: 12, padding: '8px 12px', borderRadius: 10, marginLeft: 'auto' }} onClick={() => shiftWeek(0)}>
+              Aujourd'hui
+            </button>
+          )}
+        </div>
+
+        <div className={styles.agendaDayStrip} role="tablist" aria-label="Jour affiché">
+          {DAYS.map((d, i) => {
+            const date = addDays(monday, i)
+            const count = blocks.filter((b) => b.day === i).length
+            return (
+              <button
+                key={d}
+                type="button"
+                role="tab"
+                aria-selected={i === dayIndex}
+                className={`${styles.agendaDayTab} ${i === dayIndex ? styles.agendaDayTabOn : ''} ${i === todayIndex ? styles.agendaDayTabToday : ''}`}
+                onClick={() => setPickedDay(i)}
+              >
+                <span className="mono">{d}</span>
+                <span className={`mono ${styles.agendaDayTabNum}`}>{date.getDate()}</span>
+                <span className={`mono ${styles.agendaDayTabCount}`}>{count > 0 ? count : '\u00a0'}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className={styles.agendaDayTitle}>
+          <span className={`sat ${styles.agendaDayTitleText}`}>{dayTitleFmt.format(dayDate)}</span>
+          <span className={`mono ${styles.agendaDayTitleHours}`}>
+            {blackout ? `Bloqué · ${blackout.reason}` : dayHours?.isOpen ? `${dayHours.openTime} – ${dayHours.closeTime}` : 'Fermé'}
+          </span>
+        </div>
+
+        <div className={styles.agendaList}>
+          {dayBlocks.length === 0 && (
+            <span className="mono" style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+              {bookings.isPending ? 'Chargement…' : 'Aucun rendez-vous ce jour.'}
+            </span>
+          )}
+          {dayBlocks.map(({ booking: b, tone, sub }) => (
+            <button
+              key={b.id}
+              type="button"
+              className={styles.agendaItem}
+              style={{ borderLeftColor: TONE_STYLES[tone].border }}
+              onClick={() => setOpenBooking(b.id)}
+            >
+              <span className={`mono ${styles.agendaItemTime}`}>
+                {timeFmt.format(new Date(b.slotStart))}
+                <span className={styles.agendaItemEnd}>→ {timeFmt.format(new Date(b.slotEnd))}</span>
+              </span>
+              <span className={styles.agendaItemBody}>
+                <span className={`sat ${styles.agendaItemTitle}`}>{b.vehicleLabel}</span>
+                <span className={styles.agendaItemWho}>{b.contactName}</span>
+                {sub && <span className={`mono ${styles.agendaItemSub}`}>{sub}</span>}
+                <StatusPill status={b.status} />
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {openBooking && <BookingDrawer bookingId={openBooking} onClose={() => setOpenBooking(null)} />}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -107,15 +207,15 @@ export default function AgendaPage() {
       </div>
 
       <div className={styles.toolRow}>
-        <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setWeekOffset((w) => w - 1)}>
+        <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => shiftWeek(-1)}>
           ‹ Semaine préc.
         </button>
         {weekOffset !== 0 && (
-          <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setWeekOffset(0)}>
+          <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => shiftWeek(0)}>
             Cette semaine
           </button>
         )}
-        <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => setWeekOffset((w) => w + 1)}>
+        <button type="button" className="ghost" style={{ fontSize: 13, padding: '10px 16px', borderRadius: 11 }} onClick={() => shiftWeek(1)}>
           Semaine suiv. ›
         </button>
       </div>
@@ -151,8 +251,8 @@ export default function AgendaPage() {
             const dayHours = (hours.data ?? []).find((h) => h.weekday === dayIndex + 1)
             const isBlackout = blackoutSet.has(dayISO)
             const closedAll = isBlackout || !dayHours?.isOpen
-            const openH = dayHours?.openTime ? Number(dayHours.openTime.slice(0, 2)) + Number(dayHours.openTime.slice(3, 5)) / 60 : OPEN_HOUR
-            const closeH = dayHours?.closeTime ? Number(dayHours.closeTime.slice(0, 2)) + Number(dayHours.closeTime.slice(3, 5)) / 60 : CLOSE_HOUR
+            const openH = dayHours?.openTime ? Number(dayHours.openTime.slice(0, 2)) + Number(dayHours.openTime.slice(3, 5)) / 60 : DEFAULT_OPEN_HOUR
+            const closeH = dayHours?.closeTime ? Number(dayHours.closeTime.slice(0, 2)) + Number(dayHours.closeTime.slice(3, 5)) / 60 : DEFAULT_CLOSE_HOUR
             return (
               <div key={d} className={styles.agendaDayCol} style={{ height: HOURS.length * HOUR_PX }}>
                 {HOURS.map((h) => (
