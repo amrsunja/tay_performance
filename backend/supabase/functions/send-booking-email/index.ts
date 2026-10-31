@@ -2,6 +2,7 @@
 // Invoked by (migration 0022, public._notify_edge → pg_net):
 //   • trigger AFTER INSERT on public.bookings                → "demande reçue" + workshop notification
 //   • trigger AFTER INSERT on public.booking_status_history  → confirmed / cancelled / completed / rescheduled
+//   • trigger AFTER INSERT / status UPDATE on public.service_requests → devis reçu / refusé + workshop notification
 //   • pg_cron { "type": "reminder" } once a day               → J-1 reminder
 //
 // Secrets (supabase secrets set):
@@ -14,6 +15,7 @@
 //
 // Idempotency + audit: public.email_claim() / email_log (0022) — one mail per
 // (booking, kind, slot_start, recipient). Every send result is stored in email_log.
+// Devis (no booking yet): public.notify_claim() / notification_log (0023).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -42,8 +44,12 @@ type BookingRow = {
   duration_min: number;
   status: string;
   price_total: number | null; // null = sur devis (utilitaire / pick-up), fixé par l'atelier après analyse
-  contact_name: string;
+  contact_name: string | null;
   contact_email: string | null;
+  /** set = prestation personnalisée (0023) */
+  custom_title: string | null;
+  custom_vehicle: string | null;
+  admin_message: string | null;
   legal_flag: string;
   for_other: boolean;
   created_by_admin: boolean;
@@ -54,7 +60,25 @@ type BookingRow = {
 
 const BOOKING_SELECT =
   "id, reference, slot_start, slot_end, duration_min, status, price_total, contact_name, contact_email, " +
+  "custom_title, custom_vehicle, admin_message, " +
   "legal_flag, for_other, created_by_admin, user_id, profiles(full_name, email)";
+
+type ServiceRequest = {
+  id: string;
+  reference: string;
+  service_label: string;
+  vehicle_text: string | null;
+  message: string;
+  contact_name: string | null;
+  contact_phone: string;
+  contact_email: string;
+  status: string;
+  admin_reply: string | null;
+};
+
+/** Free text typed by a client or the admin — never trust it inside HTML. */
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const hello = (name: string | null) => (name ? `Bonjour ${esc(name)},` : "Bonjour,");
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -94,6 +118,24 @@ async function send(b: BookingRow, kind: Kind, to: string | null | undefined, su
   return r.error ? `${kind}:failed ${r.error}` : `${kind}:sent`;
 }
 
+/** One mail per event (0023), for what has no booking to hang on email_log. */
+async function sendEvent(eventKey: string, to: string | null | undefined, subject: string, html: string): Promise<string> {
+  if (!to) return `${eventKey}:no_email`;
+  const { data: logId, error: claimErr } = await supabase.rpc("notify_claim", {
+    p_event_key: eventKey, p_channel: "email", p_to: to,
+  });
+  if (claimErr) throw new Error(`notify_claim: ${claimErr.message}`);
+  if (!logId) return `${eventKey}:duplicate`;
+
+  const r = await resend(to, subject, html);
+  if (r.error) console.error("resend", eventKey, to, r.error);
+  const { error: logErr } = await supabase.from("notification_log")
+    .update({ ...(r.error ? { status: "failed", error: r.error } : { status: "sent", provider_id: r.id }), updated_at: new Date().toISOString() })
+    .eq("id", logId);
+  if (logErr) console.error("notification_log update", logId, logErr.message);
+  return r.error ? `${eventKey}:failed ${r.error}` : `${eventKey}:sent`;
+}
+
 // ---------------------------------------------------------------- data
 
 async function getBooking(id: string): Promise<BookingRow | null> {
@@ -114,12 +156,14 @@ function recapHtml(b: BookingRow, address: string): string {
   return `
   <table style="font-family:Arial,sans-serif;font-size:14px;color:#111;border-collapse:collapse">
     <tr><td style="padding:4px 12px 4px 0;color:#666">Référence</td><td><b>${b.reference}</b></td></tr>
+    ${b.custom_title ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Prestation</td><td>${esc(b.custom_title)}${b.custom_vehicle ? ` · ${esc(b.custom_vehicle)}` : ""}</td></tr>` : ""}
     ${b.for_other ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Rendez-vous pour</td><td>${b.contact_name}</td></tr>` : ""}
     <tr><td style="padding:4px 12px 4px 0;color:#666">Date</td><td>${dateFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Heure</td><td>${timeFmt.format(d)}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Durée estimée</td><td>~${b.duration_min} min</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">${b.price_total == null ? "Prix" : "Total (règlement à l'atelier)"}</td><td><b>${b.price_total == null ? "communiqué par l'atelier après analyse de votre véhicule" : `${Number(b.price_total).toFixed(2)} €`}</b></td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#666">Adresse</td><td>${address}</td></tr>
+    ${b.admin_message ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Message de l'atelier</td><td>${esc(b.admin_message)}</td></tr>` : ""}
   </table>`;
 }
 
@@ -151,7 +195,7 @@ async function handleBookingCreated(bookingId: string): Promise<string[]> {
   const recap = recapHtml(b, await getAddress());
   const out: string[] = [];
   out.push(await send(b, "received", b.contact_email, `Demande reçue — ${b.reference}`,
-    wrap(`Bonjour ${b.contact_name},`,
+    wrap(hello(b.contact_name),
       `<p>Votre créneau est réservé. L'atelier confirme votre rendez-vous rapidement — vous recevrez un e-mail dès validation.</p>${recap}`)));
   const copy = await sendBookerCopy(b, "received", `Demande reçue — ${b.reference}`,
     `Vous avez réservé un créneau pour <b>${b.contact_name}</b>. L'atelier confirme rapidement.`, recap);
@@ -173,7 +217,7 @@ async function handleStatusChange(bookingId: string, from: string | null, to: st
     case "confirmed":
       if (from === "in_progress") return ["ignored:step_back"]; // not a new confirmation
       out.push(await send(b, "confirmed", b.contact_email, `Rendez-vous confirmé — ${b.reference}`,
-        wrap(`C'est confirmé, ${b.contact_name} !`,
+        wrap(b.contact_name ? `C'est confirmé, ${esc(b.contact_name)} !` : "C'est confirmé !",
           `<p>On vous attend à l'atelier. Présentez-vous 5 min avant — un café vous attend.</p>${recap}`)));
       out.push(await sendBookerCopy(b, "confirmed", `Rendez-vous confirmé — ${b.reference}`,
         `Le rendez-vous que vous avez réservé pour <b>${b.contact_name}</b> est confirmé.`, recap));
@@ -187,9 +231,9 @@ async function handleStatusChange(bookingId: string, from: string | null, to: st
       break;
     case "completed":
       if (from !== "in_progress") return [`ignored:${from}->completed`];
-      out.push(await send(b, "completed", b.contact_email, `Pose terminée — ${b.reference}`,
-        wrap(`Merci ${b.contact_name} !`,
-          `<p>Votre pose est terminée. Retrouvez les photos et votre garantie dans votre espace « Mes réservations ».</p>${recap}`)));
+      out.push(await send(b, "completed", b.contact_email, `${b.custom_title ? "Prestation" : "Pose"} terminée — ${b.reference}`,
+        wrap(b.contact_name ? `Merci ${esc(b.contact_name)} !` : "Merci !",
+          `<p>${b.custom_title ? "Votre prestation" : "Votre pose"} est terminée. Retrouvez les photos et votre garantie dans votre espace « Mes réservations ».</p>${recap}`)));
       break;
     default:
       return [`ignored:${from}->${to}`];
@@ -211,10 +255,37 @@ async function handleRescheduled(bookingId: string, note: string): Promise<strin
     + " Voici le nouveau créneau :";
   const out: (string | null)[] = [];
   out.push(await send(b, "rescheduled", b.contact_email, `Rendez-vous déplacé — ${b.reference}`,
-    wrap(`Bonjour ${b.contact_name},`, `<p>${intro}</p>${recap}`)));
+    wrap(hello(b.contact_name), `<p>${intro}</p>${recap}`)));
   out.push(await sendBookerCopy(b, "rescheduled", `Rendez-vous déplacé — ${b.reference}`,
     `Le rendez-vous réservé pour <b>${b.contact_name}</b> a été déplacé${was ? ` (initialement le ${was})` : ""}.`, recap));
   return out.filter((x): x is string => x !== null);
+}
+
+/** Personalized request (0023): received + workshop notification, or declined. */
+async function handleServiceRequest(type: "INSERT" | "UPDATE", r: ServiceRequest): Promise<string[]> {
+  const recap = `
+  <table style="font-family:Arial,sans-serif;font-size:14px;color:#111;border-collapse:collapse">
+    <tr><td style="padding:4px 12px 4px 0;color:#666">Référence</td><td><b>${r.reference}</b></td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#666">Prestation</td><td>${esc(r.service_label)}</td></tr>
+    ${r.vehicle_text ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Véhicule</td><td>${esc(r.vehicle_text)}</td></tr>` : ""}
+    <tr><td style="padding:4px 12px 4px 0;color:#666">Message</td><td>${esc(r.message)}</td></tr>
+  </table>`;
+  if (type === "INSERT") {
+    return [
+      await sendEvent(`request:${r.id}:received`, r.contact_email, `Demande reçue — ${r.reference}`,
+        wrap(hello(r.contact_name),
+          `<p>Nous avons bien reçu votre demande. L'atelier vous appelle pour fixer ensemble la date, l'heure et le prix. Vous recevrez ensuite la confirmation par e-mail et SMS.</p>${recap}`)),
+      await sendEvent(`request:${r.id}:workshop`, WORKSHOP_NOTIFY_EMAIL, `Nouveau devis — ${r.reference}`,
+        wrap("Nouvelle demande de devis",
+          `<p><b>${esc(r.contact_name ?? "Client sans nom")}</b> · ${esc(r.contact_phone)} · ${esc(r.contact_email)}</p>${recap}`)),
+    ];
+  }
+  if (r.status === "declined") {
+    return [await sendEvent(`request:${r.id}:declined`, r.contact_email, `Votre demande ${r.reference}`,
+      wrap(hello(r.contact_name),
+        `<p>Nous ne pouvons malheureusement pas donner suite à votre demande.${r.admin_reply ? ` Motif : ${esc(r.admin_reply)}.` : ""}</p>${recap}`))];
+  }
+  return [`ignored:request_${r.status}`]; // confirmed → the new booking's history row sends the confirmation
 }
 
 /** "YYYY-MM-DD" of an instant, in the workshop timezone */
@@ -239,7 +310,7 @@ async function handleReminders(): Promise<string[]> {
     if (ymd(new Date(b.slot_start)) !== tomorrow) continue;
     try {
       out.push(`${b.reference}:` + await send(b, "reminder", b.contact_email, `Rappel — rendez-vous demain (${b.reference})`,
-        wrap(`À demain, ${b.contact_name} !`,
+        wrap(b.contact_name ? `À demain, ${esc(b.contact_name)} !` : "À demain !",
           `<p>Petit rappel de votre rendez-vous à l'atelier.</p>${recapHtml(b, address)}`)));
     } catch (e) {
       console.error("reminder", b.reference, e); // one bad row must not block the others
@@ -266,6 +337,8 @@ Deno.serve(async (req) => {
       result = await handleReminders();
     } else if (payload?.type === "INSERT" && payload?.table === "bookings") {
       result = await handleBookingCreated(payload.record.id);
+    } else if ((payload?.type === "INSERT" || payload?.type === "UPDATE") && payload?.table === "service_requests") {
+      result = await handleServiceRequest(payload.type, payload.record);
     } else if (payload?.type === "INSERT" && payload?.table === "booking_status_history") {
       const rec = payload.record;
       const note: string = rec.note ?? "";

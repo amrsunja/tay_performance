@@ -38,6 +38,10 @@ const ERROR_COPY: Record<string, string> = {
   INVALID_INPUT: 'Décrivez votre véhicule (3 caractères minimum).',
   SLOT_IN_PAST: 'Impossible de déplacer un rendez-vous dans le passé.',
   INVALID_SLOT: 'Date ou heure invalide.',
+  INVALID_MESSAGE: 'Décrivez votre demande (10 caractères minimum).',
+  INVALID_TITLE: 'Indiquez le type de prestation.',
+  INVALID_PRICE: 'Prix invalide.',
+  TOO_MANY_REQUESTS: "Vous avez déjà plusieurs demandes en cours — l'atelier vous rappelle, ou appelez-nous directement.",
   NOT_FOUND: 'Introuvable.',
   FORBIDDEN: 'Accès refusé.',
 }

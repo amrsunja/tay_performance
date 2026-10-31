@@ -30,6 +30,8 @@ interface TintBlueprintProps {
   rearVlt: number
   vehicleLabel: string
   vehicleYears?: string
+  /** inside a dialog: no scroll reveal (no observer there), no sticky, no legend */
+  inline?: boolean
 }
 
 /** TLV 70 (clair) → light film · TLV 5 (très foncé) → ~1 opacity */
@@ -41,12 +43,12 @@ export function opacityForVlt(vlt: number): number {
  * Plan de pose — layered live preview over the base vehicle photo.
  * Each layer's opacity is driven by its zone's selection + the group TLV level.
  */
-export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabel, vehicleYears }: TintBlueprintProps) {
+export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabel, vehicleYears, inline }: TintBlueprintProps) {
   const frontOn = selected.some((code) => FRONT_ZONES.includes(code as TintZoneCode))
   const rearOn = selected.some((code) => !FRONT_ZONES.includes(code as TintZoneCode))
 
   return (
-    <div className={styles.blueprint} data-reveal>
+    <div className={`${styles.blueprint} ${inline ? styles.blueprintInline : ''}`} {...(inline ? {} : { 'data-reveal': true })}>
       <div className={styles.bpGrid} aria-hidden />
       <div className={styles.bpGridLarge} aria-hidden />
       <div className={styles.bpVignette} aria-hidden />
@@ -96,7 +98,7 @@ export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabe
         </div>
       </div>
 
-      <div className={styles.bpLegend}>
+      {!inline && <div className={styles.bpLegend}>
         <span className={styles.bpLegendItem}>
           <span className={styles.bpLegendDot} style={{ background: 'var(--octane-500)' }} />
           <span className={`mono ${styles.bpLegendText}`}>Teinte avant (live)</span>
@@ -106,7 +108,7 @@ export default function TintBlueprint({ selected, frontVlt, rearVlt, vehicleLabe
           <span className={`mono ${styles.bpLegendText}`}>Teinte arrière (live)</span>
         </span>
         <span className={`mono ${styles.bpLegendHint}`}>Aperçu réel — choisissez le niveau de teinte (TLV)</span>
-      </div>
+      </div>}
     </div>
   )
 }

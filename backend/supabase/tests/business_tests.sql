@@ -907,4 +907,280 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T17 — own hold (0023): only the exact held slot is held_by_me; taken neighbours stay taken
+-- ---------------------------------------------------------------
+delete from public.bookings;
+delete from public.booking_holds;
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+declare
+  v_day  date := current_setting('test.day')::date;
+  s      timestamptz;
+begin
+  s := (v_day + time '14:00') at time zone 'Europe/Paris';
+  perform public.hold_slot(s, 60, 1);
+end $$;
+reset role;
+-- another client's booking 12:00–13:30
+insert into public.bookings (reference, user_id, variant_id, slot_start, slot_end, duration_min, status, price_total, price_breakdown, pricing_version_id, contact_name, contact_phone)
+select 'TP-T17', '00000000-0000-0000-0000-00000000000b', current_setting('test.variant_id')::uuid,
+       (current_setting('test.day')::date + time '12:00') at time zone 'Europe/Paris',
+       (current_setting('test.day')::date + time '13:30') at time zone 'Europe/Paris',
+       90, 'confirmed', 100, '{}'::jsonb, public.current_pricing_version_id(), 'Autre', '+33600000001';
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+declare
+  v_day date := current_setting('test.day')::date;
+  v_st  text;
+begin
+  -- 14:00 is the held slot
+  select state into v_st from public.get_available_slots(v_day, 60)
+   where slot_start = (v_day + time '14:00') at time zone 'Europe/Paris';
+  if v_st <> 'held_by_me' then raise exception 'T17 held slot state %', v_st; end if;
+  -- 13:30 overlaps the hold only: free for its owner, but not reported as "held"
+  select state into v_st from public.get_available_slots(v_day, 60)
+   where slot_start = (v_day + time '13:30') at time zone 'Europe/Paris';
+  if v_st <> 'available' then raise exception 'T17 hold neighbour state %', v_st; end if;
+end $$;
+reset role;
+-- 90 min slots starting 13:00 overlap the booking AND the hold — must be taken, not selectable
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+declare
+  v_day date := current_setting('test.day')::date;
+  v_st  text;
+begin
+  select state into v_st from public.get_available_slots(v_day, 90)
+   where slot_start = (v_day + time '13:00') at time zone 'Europe/Paris';
+  if v_st <> 'taken' then raise exception 'T17 slot overlapping a real booking unlocked by own hold: %', v_st; end if;
+end $$;
+reset role;
+delete from public.bookings where reference = 'TP-T17';
+delete from public.booking_holds;
+
+-- ---------------------------------------------------------------
+-- T18 — personalized requests (0023): client → devis → real booking; RLS; limits
+-- ---------------------------------------------------------------
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+declare
+  r jsonb;
+begin
+  r := public.create_service_request('Covering', 'Covering noir mat complet svp', '+33612345678', 'Client@Test.fr', null, 'Golf 8');
+  if r->>'reference' not like 'DV-%' or r->>'status' <> 'new' then raise exception 'T18 request %', r; end if;
+  perform set_config('test.req_id', r->>'id', false);
+
+  -- validation
+  begin
+    perform public.create_service_request('Covering', 'court', '+33612345678', 'a@b.fr');
+    raise exception 'T18 short message accepted';
+  exception when others then
+    if sqlerrm <> 'INVALID_MESSAGE' then raise; end if;
+  end;
+  begin
+    perform public.create_service_request('Covering', 'Message assez long', '+33612345678', 'pas-un-mail');
+    raise exception 'T18 invalid email accepted';
+  exception when others then
+    if sqlerrm <> 'EMAIL_REQUIRED' then raise; end if;
+  end;
+
+  -- no direct write
+  begin
+    update public.service_requests set status = 'confirmed' where id = current_setting('test.req_id')::uuid;
+    raise exception 'T18 client updated his request directly';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- spam limit: 3 open requests max
+  perform public.create_service_request('Detailing', 'Polissage complet svp', '+33612345678', 'a@b.fr');
+  r := public.create_service_request('Sellerie', 'Reprise siege conducteur', '+33612345678', 'a@b.fr');
+  perform set_config('test.req_cancel', r->>'id', false);
+  begin
+    perform public.create_service_request('Autre', 'Encore une demande svp', '+33612345678', 'a@b.fr');
+    raise exception 'T18 spam limit not enforced';
+  exception when others then
+    if sqlerrm <> 'TOO_MANY_REQUESTS' then raise; end if;
+  end;
+
+  -- a client cancels his own open request
+  perform public.cancel_service_request(current_setting('test.req_cancel')::uuid);
+  if (select status from public.service_requests where id = current_setting('test.req_cancel')::uuid) <> 'cancelled' then
+    raise exception 'T18 cancel did not stick';
+  end if;
+end $$;
+reset role;
+
+-- another client sees nothing, cannot cancel or confirm
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000b', false);
+set role authenticated;
+do $$
+begin
+  if exists (select 1 from public.service_requests) then raise exception 'T18 client B reads client A requests'; end if;
+  begin
+    perform public.cancel_service_request(current_setting('test.req_id')::uuid);
+    raise exception 'T18 client B cancelled A';
+  exception when others then
+    if sqlerrm <> 'NOT_FOUND' then raise; end if;
+  end;
+  begin
+    perform public.admin_confirm_service_request(current_setting('test.req_id')::uuid, 'X', now() + interval '10 days', 60);
+    raise exception 'T18 client confirmed a request';
+  exception when others then
+    if sqlerrm <> 'FORBIDDEN' then raise; end if;
+  end;
+end $$;
+reset role;
+
+-- admin confirms → a real booking, in the agenda, in the client's reservations, slot-checked
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  v_day   date := current_setting('test.day')::date;
+  v_start timestamptz := (v_day + time '10:00') at time zone 'Europe/Paris';
+  r       jsonb;
+  b       public.bookings%rowtype;
+begin
+  r := public.admin_confirm_service_request(current_setting('test.req_id')::uuid, 'Covering noir mat', v_start, 120, 1500, 'Prévoir 2 jours de séchage');
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if b.status <> 'confirmed' or b.price_total <> 1500 or b.custom_title <> 'Covering noir mat'
+     or b.variant_id is not null or b.custom_vehicle <> 'Golf 8' or b.admin_message is null
+     or b.client_notes is null or b.user_id <> '00000000-0000-0000-0000-00000000000a' then
+    raise exception 'T18 confirmed booking wrong: %', to_jsonb(b);
+  end if;
+  if (select status from public.service_requests where id = current_setting('test.req_id')::uuid) <> 'confirmed' then
+    raise exception 'T18 request not flipped';
+  end if;
+  if not exists (select 1 from public.booking_status_history where booking_id = b.id and from_status is null and to_status = 'confirmed') then
+    raise exception 'T18 no null→confirmed history (no confirmation would be sent)';
+  end if;
+
+  -- no second conversion
+  begin
+    perform public.admin_confirm_service_request(current_setting('test.req_id')::uuid, 'X', v_start + interval '1 day', 60);
+    raise exception 'T18 request confirmed twice';
+  exception when others then
+    if sqlerrm <> 'ILLEGAL_TRANSITION' then raise; end if;
+  end;
+
+  -- the slot is really taken, custom or not
+  begin
+    perform public.admin_create_custom_booking('Detailing', v_start + interval '30 minutes', 60, '+33600000002');
+    raise exception 'T18 custom booking overlapped';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+
+  -- own booking: no name needed; price later ("sur devis"); past refused
+  r := public.admin_create_custom_booking('Detailing', v_start + interval '3 hours', 60, '+33600000002');
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if b.contact_name is not null or b.price_total is not null or b.user_id is not null then
+    raise exception 'T18 admin custom booking %', to_jsonb(b);
+  end if;
+  begin
+    perform public.admin_create_custom_booking('Detailing', now() - interval '1 hour', 60, '+33600000002');
+    raise exception 'T18 past slot accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_IN_PAST' then raise; end if;
+  end;
+
+  -- decline
+  perform set_config('test.req_other', (select id::text from public.service_requests where status = 'new' limit 1), false);
+  perform public.admin_decline_service_request(current_setting('test.req_other')::uuid, 'Hors de notre activité');
+  if (select status from public.service_requests where id = current_setting('test.req_other')::uuid) <> 'declined' then
+    raise exception 'T18 decline did not stick';
+  end if;
+end $$;
+reset role;
+
+-- the client sees the confirmed job in his bookings
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  if not exists (select 1 from public.bookings where custom_title = 'Covering noir mat') then
+    raise exception 'T18 client cannot see his custom booking';
+  end if;
+end $$;
+reset role;
+
+-- the custom job blocks public availability too
+do $$
+declare v_day date := current_setting('test.day')::date; v_st text;
+begin
+  select state into v_st from public._day_slots(v_day, 60, null)
+   where slot_start = (v_day + time '10:00') at time zone 'Europe/Paris';
+  if v_st <> 'taken' then raise exception 'T18 custom booking does not block availability: %', v_st; end if;
+end $$;
+
+-- ---------------------------------------------------------------
+-- T19 — admin tint booking without a name; verified phone attaches it to the client (0023)
+-- ---------------------------------------------------------------
+update auth.users set phone = '33699887766' where id = '00000000-0000-0000-0000-00000000000b';
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  v_day date := current_setting('test.day')::date;
+  r jsonb;
+  b public.bookings%rowtype;
+begin
+  r := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+    '[{"zone_code":"rear_sides","vlt_percent":20}]'::jsonb,
+    (v_day + time '16:00') at time zone 'Europe/Paris', null, '06 99 88 77 66');
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if b.contact_name is not null then raise exception 'T19 name should stay null'; end if;
+  if b.user_id is distinct from '00000000-0000-0000-0000-00000000000b'::uuid then
+    raise exception 'T19 not attached to the verified phone owner: %', b.user_id;
+  end if;
+end $$;
+reset role;
+do $$
+begin
+  if public._user_id_for_phone('+33600000000') is not null then raise exception 'T19 unknown phone matched'; end if;
+end $$;
+
+-- ---------------------------------------------------------------
+-- T20 — private settings + notification ledger (0023): admin-only, idempotent
+-- ---------------------------------------------------------------
+do $$
+declare l1 uuid; l2 uuid; l3 uuid;
+begin
+  l1 := public.notify_claim('admin:booking:x:new', 'sms', '+33600000000');
+  l2 := public.notify_claim('admin:booking:x:new', 'sms', '+33600000000');
+  if l1 is null or l2 is not null then raise exception 'T20 claim not idempotent (% / %)', l1, l2; end if;
+  update public.notification_log set status = 'failed' where id = l1;
+  l3 := public.notify_claim('admin:booking:x:new', 'sms', '+33600000000');
+  if l3 is null then raise exception 'T20 failed event not re-claimable'; end if;
+  if has_function_privilege('authenticated', 'public.notify_claim(text, text, text)', 'execute')
+     or has_function_privilege('anon', 'public.notify_claim(text, text, text)', 'execute')
+     or has_function_privilege('authenticated', 'public._user_id_for_phone(text)', 'execute') then
+    raise exception 'T20 internal functions exposed to API roles';
+  end if;
+  if not exists (select 1 from pg_trigger where tgname = 'service_requests_notify') then
+    raise exception 'T20 service_requests_notify trigger missing';
+  end if;
+end $$;
+insert into public.private_settings (key, value) values ('admin_sms_phone', '+33611111111');
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  if exists (select 1 from public.private_settings) then raise exception 'T20 client reads private settings'; end if;
+  if exists (select 1 from public.notification_log) then raise exception 'T20 client reads notification log'; end if;
+end $$;
+reset role;
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+begin
+  if not exists (select 1 from public.private_settings) then raise exception 'T20 admin cannot read private settings'; end if;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

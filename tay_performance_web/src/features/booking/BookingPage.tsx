@@ -15,10 +15,16 @@ import VehicleFunnel from './VehicleStep'
 import ConfigStep from './ConfigStep'
 import CalendarStep from './CalendarStep'
 import ConfirmStep from './ConfirmStep'
+import ServiceStep from './ServiceStep'
+import CustomRequestStep from './CustomRequestStep'
+import Icon from '../../components/ui/Icon'
 import styles from './booking.module.css'
 
-const STEP_ORDER: BookingStep[] = ['vehicle', 'config', 'calendar', 'confirm']
+const TINT_STEPS: BookingStep[] = ['service', 'vehicle', 'config', 'calendar', 'confirm']
+const CUSTOM_STEPS: BookingStep[] = ['service', 'custom']
 const STEP_LABELS: Record<BookingStep, string> = {
+  service: 'Prestation',
+  custom: 'Votre demande',
   vehicle: 'Véhicule',
   config: 'Configuration',
   calendar: 'Créneau',
@@ -41,7 +47,8 @@ export default function BookingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [state.step])
 
-  const stepIndex = STEP_ORDER.indexOf(state.step)
+  const stepOrder = state.step === 'custom' ? CUSTOM_STEPS : TINT_STEPS
+  const stepIndex = stepOrder.indexOf(state.step)
 
   return (
     <div className={styles.page}>
@@ -51,7 +58,7 @@ export default function BookingPage() {
         </Link>
         <div className={styles.headerRight}>
           <div className={styles.stepper} aria-label="Progression de la réservation">
-            {STEP_ORDER.map((step, i) => (
+            {stepOrder.map((step, i) => (
               <span key={step} className={styles.stepperItem}>
                 <span
                   className={[
@@ -66,7 +73,7 @@ export default function BookingPage() {
                 >
                   {STEP_LABELS[step]}
                 </span>
-                {i < STEP_ORDER.length - 1 && <span className={styles.stepLink} />}
+                {i < stepOrder.length - 1 && <span className={styles.stepLink} />}
               </span>
             ))}
           </div>
@@ -76,13 +83,19 @@ export default function BookingPage() {
         </div>
       </header>
 
+      {state.step === 'service' && <ServiceStep dispatch={dispatch} />}
+      {state.step === 'custom' && <CustomRequestStep dispatch={dispatch} />}
+
       {state.step === 'vehicle' && (
         <section className={styles.step}>
           <div className={styles.stepInnerNarrow}>
             <div data-reveal>
+              <button type="button" className={`navlink mono ${styles.stepBack}`} onClick={() => dispatch({ type: 'restart' })}>
+                <Icon name="arrow-left" size={13} /> Changer de prestation
+              </button>
               <div className={styles.kickerRow}>
                 <span className={styles.kickerLine} />
-                <span className={`mono ${styles.kicker}`}>Étape 1 · Votre véhicule</span>
+                <span className={`mono ${styles.kicker}`}>Votre véhicule</span>
               </div>
               <h1 className={`clash ${styles.h1}`}>
                 Quel véhicule teinter<span style={{ color: 'var(--accent-500)' }}>&nbsp;?</span>
@@ -153,7 +166,7 @@ function useBookingPageState() {
       try {
         if (rescheduleId) {
           const booking = await getMyBooking(rescheduleId)
-          if (!booking) return
+          if (!booking?.variantId) return
           const resolved = await resolveVariant(booking.variantId)
           if (!resolved) return
           // legacy bookings may carry rear_window / panoramic_roof / 85 % — fold onto the v2 packs

@@ -201,6 +201,9 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
   }
 
   const heldStart = state.hold?.slotStart ?? null
+  // only what can really be booked: inside the workshop hours, not overlapping a booking,
+  // far enough ahead (server truth — get_available_slots)
+  const openSlots = (daySlots.data ?? []).filter((s) => s.state !== 'taken')
   // name, phone AND email are required (server enforces the same rule)
   const contactOk =
     state.contactName.trim().length > 0 &&
@@ -336,7 +339,8 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                       {avail.state === 'available' && (
                         <>
                           <span className={`mono ${styles.calDaySub}`}>
-                            {avail.freeCount} libre{avail.freeCount > 1 ? 's' : ''}
+                            {avail.freeCount}
+                            <span className={styles.calDaySubWord}> libre{avail.freeCount > 1 ? 's' : ''}</span>
                           </span>
                           <span className={styles.calDot} aria-hidden />
                         </>
@@ -373,21 +377,15 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                   <span className={`mono ${styles.panelCardHint}`}>Illkirch · 67400</span>
                 </div>
                 <div className={styles.slotsGrid}>
-                  {(daySlots.data ?? []).map((slot) => {
+                  {openSlots.map((slot) => {
                     const label = slotTimeFmt.format(new Date(slot.slotStart))
                     const isHeld = heldStart === slot.slotStart
-                    const open = slot.state === 'available' || slot.state === 'held_by_me'
                     return (
                       <button
                         key={slot.slotStart + slot.bay}
                         type="button"
-                        className={[
-                          'mono',
-                          styles.slot,
-                          !open ? styles.slotOff : '',
-                          isHeld ? styles.slotSelected : '',
-                        ].join(' ')}
-                        disabled={!open || holdMutation.isPending}
+                        className={['mono', styles.slot, isHeld ? styles.slotSelected : ''].join(' ')}
+                        disabled={holdMutation.isPending}
                         onClick={() => holdMutation.mutate(slot)}
                       >
                         {label}
@@ -399,9 +397,9 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                       Chargement des créneaux…
                     </span>
                   )}
-                  {!daySlots.isPending && (daySlots.data ?? []).length === 0 && (
+                  {!daySlots.isPending && openSlots.length === 0 && (
                     <span className="mono" style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-                      Aucun créneau ce jour.
+                      Plus aucun créneau libre ce jour.
                     </span>
                   )}
                 </div>
@@ -446,7 +444,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                       compte.
                     </span>
                   )}
-                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
+                  <div className={styles.contactRow}>
                     <input
                       className="field"
                       placeholder="Nom complet *"
@@ -480,7 +478,7 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
                       <span className="sat" style={{ fontSize: 13, color: 'var(--text-soft)' }}>
                         Vos coordonnées (personne qui réserve) *
                       </span>
-                      <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
+                      <div className={styles.contactRow}>
                         <input
                           className="field"
                           placeholder="Votre nom complet *"

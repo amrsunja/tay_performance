@@ -19,7 +19,7 @@ interface AdminBookingSelectRow {
   status: string
   legal_flag: string
   price_total: number | null
-  contact_name: string
+  contact_name: string | null
   contact_phone: string
   contact_email: string | null
   client_notes: string | null
@@ -27,6 +27,9 @@ interface AdminBookingSelectRow {
   created_by_admin: boolean
   for_other: boolean
   price_overridden: boolean
+  custom_title: string | null
+  custom_vehicle: string | null
+  admin_message: string | null
   profiles: { full_name: string | null; phone: string | null; email: string | null } | null
   booking_tint_specs: { zone_code: string; vlt_percent: number; is_legal: boolean }[]
   vehicle_variants: {
@@ -38,10 +41,14 @@ interface AdminBookingSelectRow {
 
 const ADMIN_BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
   price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin, for_other, price_overridden,
+  custom_title, custom_vehicle, admin_message,
   profiles(full_name, phone, email),
   booking_tint_specs(zone_code, vlt_percent, is_legal),
   vehicle_variants(body_style_code, body_styles(label_fr),
     generations(name, models(name, makes(name))))`
+
+/** the admin may create a booking without a name (0023) */
+export const NO_NAME_LABEL = 'Client sans nom'
 
 function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
   const chain = b.vehicle_variants
@@ -56,7 +63,7 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     status: b.status as BookingStatus,
     legalFlag: b.legal_flag as LegalFlag,
     priceTotal: b.price_total == null ? null : Number(b.price_total),
-    contactName: b.contact_name,
+    contactName: b.contact_name ?? NO_NAME_LABEL,
     contactPhone: b.contact_phone,
     contactEmail: b.contact_email,
     clientNotes: b.client_notes,
@@ -66,10 +73,12 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     bookerName: b.profiles?.full_name ?? null,
     bookerPhone: b.profiles?.phone ?? null,
     bookerEmail: b.profiles?.email ?? null,
-    vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
-    bodyLabel: chain?.body_styles?.label_fr ?? '',
-    badge: (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
+    vehicleLabel: b.custom_title ?? `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.name ?? ''} ${model}`.trim(),
+    bodyLabel: b.custom_title ? b.custom_vehicle ?? '' : chain?.body_styles?.label_fr ?? '',
+    badge: b.custom_title ? b.custom_title.slice(0, 2).toUpperCase() : (compact.length <= 3 ? compact : compact.slice(0, 2)).toUpperCase() || '—',
     createdByAdmin: Boolean(b.created_by_admin),
+    isCustom: b.custom_title != null,
+    adminMessage: b.admin_message,
     specs: (b.booking_tint_specs ?? []).map((s) => ({
       zone: s.zone_code as TintZoneCode,
       vltPercent: Number(s.vlt_percent),
@@ -90,6 +99,18 @@ export async function getBookingsBetween(fromISO: string, toISO: string, include
   const { data, error } = await q
   if (error) throw error
   return ((data ?? []) as unknown as AdminBookingSelectRow[]).map(mapRow)
+}
+
+/** Tab indicator: what the feed lists for that period (cancelled excluded). */
+export async function countBookingsBetween(fromISO: string, toISO: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .gte('slot_start', fromISO)
+    .lt('slot_start', toISO)
+    .not('status', 'in', '(cancelled)')
+  if (error) throw error
+  return count ?? 0
 }
 
 export async function getAdminBooking(id: string): Promise<AdminBookingRow | null> {
@@ -291,7 +312,7 @@ export interface AdminCreateBookingInput {
   variantId: string
   specs: QuoteSpec[]
   slotStartISO: string
-  contactName: string
+  contactName?: string | null
   contactPhone: string
   contactEmail?: string | null
   clientNotes?: string | null
@@ -305,7 +326,7 @@ export async function adminCreateBooking(input: AdminCreateBookingInput): Promis
     p_variant_id: input.variantId,
     p_specs: input.specs,
     p_slot_start: input.slotStartISO,
-    p_contact_name: input.contactName,
+    p_contact_name: input.contactName?.trim() || null,
     p_contact_phone: input.contactPhone,
     p_contact_email: input.contactEmail ?? null,
     p_client_notes: input.clientNotes ?? null,
@@ -320,11 +341,12 @@ export async function adminCreateBooking(input: AdminCreateBookingInput): Promis
 
 /* ---------- realtime ---------- */
 
-/** Subscribe to booking changes (admin sees all rows through RLS). Returns unsubscribe. */
-export function onBookingsChange(handler: () => void): () => void {
+/** Subscribe to booking + devis changes (admin sees all rows through RLS). Returns unsubscribe. */
+export function onAdminDataChange(handler: () => void): () => void {
   const channel = supabase
     .channel('admin-bookings')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handler)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, handler)
     .subscribe()
   return () => {
     supabase.removeChannel(channel)
@@ -358,7 +380,7 @@ export async function listFinanceBookings(fromISO: string, toISO: string): Promi
     .from('bookings')
     .select(
       `id, reference, slot_start, created_at, status, price_total, price_overridden, revenue_excluded,
-       revenue_excluded_reason, contact_name, user_id, created_by_admin,
+       revenue_excluded_reason, contact_name, user_id, created_by_admin, custom_title,
        booking_tint_specs(zone_code),
        vehicle_variants(body_style_code, body_styles(label_fr), generations(name, models(name, makes(name))))`,
     )
@@ -382,11 +404,11 @@ export async function listFinanceBookings(fromISO: string, toISO: string): Promi
       priceOverridden: Boolean(b.price_overridden),
       revenueExcluded: Boolean(b.revenue_excluded),
       revenueExcludedReason: (b.revenue_excluded_reason as string | null) ?? null,
-      contactName: b.contact_name as string,
+      contactName: (b.contact_name as string | null) ?? NO_NAME_LABEL,
       userId: (b.user_id as string | null) ?? null,
-      bodyStyle: chain?.body_style_code ?? '',
-      bodyLabel: chain?.body_styles?.label_fr ?? '',
-      vehicleLabel: `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.models?.name ?? ''} ${chain?.generations?.name ?? ''}`.trim(),
+      bodyStyle: chain?.body_style_code ?? 'custom',
+      bodyLabel: chain?.body_styles?.label_fr ?? 'Prestations personnalisées',
+      vehicleLabel: (b.custom_title as string | null) ?? `${chain?.generations?.models?.makes?.name ?? ''} ${chain?.generations?.models?.name ?? ''} ${chain?.generations?.name ?? ''}`.trim(),
       zones: ((b.booking_tint_specs as { zone_code: string }[] | null) ?? []).map((z) => z.zone_code as TintZoneCode),
       createdByAdmin: Boolean(b.created_by_admin),
     }

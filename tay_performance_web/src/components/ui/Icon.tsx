@@ -35,6 +35,7 @@ export type IconName =
   | 'receipt'
   | 'euro'
   | 'settings'
+  | 'message'
 
 interface IconProps {
   name: IconName
@@ -134,6 +135,12 @@ const STROKE: Partial<Record<IconName, React.ReactNode>> = {
     <>
       <path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8v-17Z" />
       <path d="M9 8.5h6M9 12.5h6" />
+    </>
+  ),
+  message: (
+    <>
+      <path d="M4 5.5h16v11H10l-4 3.5v-3.5H4v-11Z" />
+      <path d="M8 9.5h8M8 12.5h5" />
     </>
   ),
   settings: (

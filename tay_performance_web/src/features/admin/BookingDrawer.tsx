@@ -21,6 +21,7 @@ import {
 import { photoUrl } from '../../api/bookings'
 import { errorMessage } from '../../lib/supabase'
 import { formatPhoneDisplay } from '../../lib/phone'
+import { parisParts, parisToDate } from '../../lib/parisTime'
 import type { BookingStatus } from '../../types/domain'
 import Icon from '../../components/ui/Icon'
 import { formatDuration, formatEuro } from '../booking/useBookingDraft'
@@ -61,28 +62,6 @@ const dateFmt = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
 })
 
-/* the workshop runs on Paris time whatever the admin's browser timezone */
-const parisFmt = new Intl.DateTimeFormat('sv-SE', {
-  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-})
-function parisParts(d: Date): { date: string; time: string } {
-  const p = parisFmt.format(d) // "2026-09-25 14:30"
-  return { date: p.slice(0, 10), time: p.slice(11, 16) }
-}
-/** "2026-09-25" + "14:30" read as Europe/Paris wall-clock time → instant */
-function parisToDate(date: string, time: string): Date {
-  const [y, m, d] = date.split('-').map(Number)
-  const [hh, mm] = time.split(':').map(Number)
-  const wanted = Date.UTC(y, m - 1, d, hh, mm)
-  let t = wanted
-  for (let i = 0; i < 2; i++) {
-    const p = parisParts(new Date(t))
-    const [py, pm, pd] = p.date.split('-').map(Number)
-    const [ph, pmin] = p.time.split(':').map(Number)
-    t -= Date.UTC(py, pm - 1, pd, ph, pmin) - wanted
-  }
-  return new Date(t)
-}
 const endFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
 function zoneShort(code: string) {
@@ -203,7 +182,7 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', justifyContent: 'flex-end', background: 'rgba(6,8,11,0.6)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 95, display: 'flex', justifyContent: 'flex-end', background: 'rgba(6,8,11,0.6)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -237,10 +216,11 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
                 {b.vehicleLabel}
               </h2>
               <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                {b.bodyLabel} · {dateFmt.format(new Date(b.slotStart))} · {formatDuration(b.durationMin)}
+                {b.bodyLabel ? `${b.bodyLabel} · ` : ''}{dateFmt.format(new Date(b.slotStart))} · {formatDuration(b.durationMin)}
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
                 <StatusPill status={b.status} />
+                {b.isCustom && <span className="pill pill--info">Personnalisée</span>}
                 {b.legalFlag === 'non_compliant_ack' && (
                   <span className="pill pill--warning">
                     <Icon name="warning" size={13} /> Hors conformité (ack client)
@@ -271,6 +251,9 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
               )}
               {b.clientNotes && (
                 <span style={{ fontSize: 13, color: 'var(--text-soft)', fontStyle: 'italic' }}>« {b.clientNotes} »</span>
+              )}
+              {b.adminMessage && (
+                <span style={{ fontSize: 13, color: 'var(--octane-300)' }}>Message envoyé au client : {b.adminMessage}</span>
               )}
               {b.forOther && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle)', display: 'grid', gap: 2 }}>

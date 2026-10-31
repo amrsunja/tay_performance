@@ -20,7 +20,8 @@ backend/
     │   └── 0007_seed.sql            # catalog, hours, settings, pricing v1, starter taxonomy
     ├── functions/
     │   ├── send-booking-email/      # Resend dispatcher (webhooks + J-1 reminder)
-    │   └── send-booking-sms/        # Twilio SMS: confirmed / J-1 (booked ≥7 days ahead) / completed + Google review
+    │   └── send-booking-sms/        # Twilio SMS: confirmed / J-1 (booked ≥7 days ahead) / completed + Google review,
+    │                                #   admin alerts: new booking, new devis, client cancellation
     ├── optional/
     │   └── cron_jobs.sql            # pg_cron housekeeping: hold sweep, stale-anon purge (hosted only)
     └── tests/

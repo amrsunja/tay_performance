@@ -240,7 +240,12 @@ export interface MyBookingRow {
   /** null = en attente du prix atelier (sur devis) */
   priceTotal: number | null
   clientNotes: string | null
-  variantId: string
+  /** null = prestation personnalisée */
+  variantId: string | null
+  /** prestation personnalisée (0023): vehicleLabel = this title, no specs */
+  isCustom: boolean
+  /** message of the workshop, written when it confirmed the job */
+  adminMessage: string | null
   contactName: string
   /** booked by this profile for another person (contactName = that person) */
   forOther: boolean
@@ -286,10 +291,14 @@ export interface AdminBookingRow {
   bookerName: string | null
   bookerPhone: string | null
   bookerEmail: string | null
+  /** tint: make + generation + model · custom: the job's title */
   vehicleLabel: string
+  /** tint: body style · custom: the vehicle as typed, if any */
   bodyLabel: string
   badge: string
   createdByAdmin: boolean
+  isCustom: boolean
+  adminMessage: string | null
   specs: { zone: TintZoneCode; vltPercent: number; isLegal: boolean }[]
 }
 
@@ -310,6 +319,27 @@ export interface StatusHistoryRow {
   toStatus: BookingStatus
   changedAt: string
   note: string | null
+}
+
+export type ServiceRequestStatus = 'new' | 'confirmed' | 'declined' | 'cancelled'
+
+/** Personalized reservation request: no date until the workshop confirms it (0023). */
+export interface ServiceRequestRow {
+  id: string
+  reference: string
+  userId: string | null
+  serviceLabel: string
+  vehicleText: string | null
+  message: string
+  contactName: string | null
+  contactPhone: string
+  contactEmail: string
+  status: ServiceRequestStatus
+  /** decline reason, visible by the client */
+  adminReply: string | null
+  createdAt: string
+  /** the booking created on confirmation */
+  bookingId: string | null
 }
 
 export interface VehicleRequestRow {

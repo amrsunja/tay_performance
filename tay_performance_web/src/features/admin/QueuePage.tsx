@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import StatusPill from '../../components/ui/StatusPill'
-import { advanceStatus, getBookingsBetween, onBookingsChange } from '../../api/admin'
+import { advanceStatus, getBookingsBetween } from '../../api/admin'
 import { errorMessage } from '../../lib/supabase'
 import type { BookingStatus } from '../../types/domain'
 import { formatDuration } from '../booking/useBookingDraft'
@@ -89,10 +89,6 @@ export default function QueuePage() {
     queryFn: () => getBookingsBetween(range.from, range.to),
     staleTime: 10_000,
   })
-
-  useEffect(() => {
-    return onBookingsChange(() => queryClient.invalidateQueries({ queryKey: ['admin'] }))
-  }, [queryClient])
 
   const statusMutation = useMutation({
     mutationFn: ({ id, to }: { id: string; to: BookingStatus }) => advanceStatus(id, to),
@@ -276,7 +272,19 @@ export default function QueuePage() {
                   <span className={styles.nowBar} />
                 </div>
               )}
-              <article className={styles.queueRow}>
+              <article
+                className={styles.queueRow}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ouvrir la fiche ${entry.reference}`}
+                onClick={() => setOpenBooking(entry.id)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault()
+                    setOpenBooking(entry.id)
+                  }
+                }}
+              >
                 <div className={`mono ${styles.queueTime}`}>
                   <span className={styles.queueTimeStart}>{timeFmt.format(start)}</span>
                   <span className={styles.queueTimeEnd}>→ {timeFmt.format(new Date(entry.slotEnd))}</span>
@@ -296,6 +304,7 @@ export default function QueuePage() {
                   </span>
                 </div>
                 <div className={styles.queueSpecs}>
+                  {entry.isCustom && <span className="chip chip--rear">{entry.bodyLabel || 'Personnalisée'}</span>}
                   {entry.specs.map((spec) => (
                     <span
                       key={spec.zone}
@@ -319,7 +328,7 @@ export default function QueuePage() {
                 <div className={styles.queueStatus}>
                   <StatusPill status={entry.status} />
                 </div>
-                <div className={styles.queueActions}>
+                <div className={styles.queueActions} onClick={(e) => e.stopPropagation()}>
                   {next && (
                     <button
                       type="button"

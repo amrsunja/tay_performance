@@ -26,6 +26,14 @@ Email + password → `signInWithPassword`. On success fetch own profile; non-adm
 - Topbar date picker (exists as static text): make it a real date selector driving the query; bay selector reads `app_settings.bay_count`.
 - Topbar **+ Nouvelle réservation** → manual booking modal: pick/create client contact (or search existing profile), resolve variant via the same VehicleStep component, zones/VLT, pick slot (same availability RPC), calls `admin_create_booking` (status `confirmed`).
 
+## 1 bis. `/admin/devis` (DevisPage) — personalized reservations (migration 0023)
+
+A client who wants something other than a tint sends a `service_requests` row: prestation, message, phone, e-mail, optional name and vehicle — no date. The tab badge counts the `new` ones.
+- **Confirmer** → `admin_confirm_service_request`: the admin's title, date, duration, price (optional) and message create a real `bookings` row (`custom_title` set, no variant, no specs), `confirmed`, linked to the request. From there it is a booking like any other: agenda, drawer, history, finance, client portal, e-mail + SMS, J-1 reminder.
+- **Refuser** → `admin_decline_service_request`, optional reason sent to the client by e-mail + SMS.
+- The topbar **+ Nouvelle réservation** wizard creates either a tint booking or a custom one (`admin_create_custom_booking`). The client name is optional in both; a booking is attached to the client whose verified phone matches.
+- Admin SMS alerts: new client booking, new devis, client cancellation or reprogramming. Number: Config → Notifications (`private_settings.admin_sms_phone`, admin-only), else `app_settings.contact_phone`.
+
 ## 2. `/admin/agenda` (AgendaPage)
 
 **Query** `['admin','agenda', weekStartISO]`: bookings of the visible week (status ≠ cancelled) → map to the existing block model `{day, start, duration, label, sub, tone}`:

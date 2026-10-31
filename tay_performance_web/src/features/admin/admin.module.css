@@ -90,6 +90,28 @@
   color: var(--accent-500);
 }
 
+.navCount {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.navCountAlert {
+  background: var(--octane-500);
+  color: var(--bg-canvas);
+}
+
 .sidebarFoot {
   margin-top: auto;
   display: flex;
@@ -302,11 +324,17 @@
   background: var(--surface-well);
   padding: 14px 18px;
   transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
 }
 
 .queueRow:hover {
   border-color: var(--border-strong);
   background: var(--surface-1);
+}
+
+.queueRow:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .queueTime {
@@ -344,6 +372,10 @@
   color: var(--brand-blue);
   font-size: 12px;
   flex: none;
+}
+
+.queueVehicle > span:last-child {
+  min-width: 0;
 }
 
 .queueVehicleName {
@@ -839,10 +871,304 @@
   color: var(--text-soft);
 }
 
+/* ============ devis ============ */
+.devisTabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.devisList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.devisCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-well);
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.devisHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.devisRef {
+  display: block;
+  font-size: 11px;
+  color: var(--accent-500);
+}
+
+.devisTitle {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-hi);
+  margin: 2px 0 0;
+}
+
+.devisDate {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.devisMessage {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.devisContact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.devisContact a {
+  overflow-wrap: anywhere;
+}
+
+.devisActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ============ new booking wizard / forms ============ */
+.wizardSteps {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.formStack {
+  display: grid;
+  gap: 16px;
+}
+
+.formGroup {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.formLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.formHint {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chipRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wizardConfig {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.wizardTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--text-dim);
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.wizardTotal b {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent-500);
+}
+
+/* ============ agenda — phone (one day at a time) ============ */
+.agendaWeekNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.agendaWeekLabel {
+  font-size: 13px;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.agendaDayStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.agendaDayTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0 6px;
+  border-radius: 11px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-inset);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.agendaDayTabNum {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.agendaDayTabCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-300);
+  line-height: 1.2;
+}
+
+.agendaDayTabToday {
+  border-color: var(--octane-500);
+}
+
+.agendaDayTabOn {
+  background: var(--accent-500);
+  border-color: var(--accent-500);
+  color: var(--bg-canvas);
+}
+
+.agendaDayTabOn .agendaDayTabNum,
+.agendaDayTabOn .agendaDayTabCount {
+  color: var(--bg-canvas);
+}
+
+.agendaDayTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.agendaDayTitleText {
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--text-hi);
+}
+
+.agendaDayTitle .agendaDayTitleText::first-letter {
+  text-transform: uppercase;
+}
+
+.agendaDayTitleHours {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.agendaList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agendaItem {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid;
+  border-radius: 12px;
+  background: var(--surface-well);
+  padding: 13px 14px;
+  cursor: pointer;
+}
+
+.agendaItemTime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-hi);
+}
+
+.agendaItemEnd {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.agendaItemBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.agendaItemTitle {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--text-hi);
+}
+
+.agendaItemWho {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.agendaItemSub {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* ============ responsive ============ */
 @media (max-width: 1180px) {
   .queueRow {
-    grid-template-columns: 80px 1.4fr 1.2fr 110px;
+    grid-template-columns: 80px minmax(0, 1.4fr) minmax(0, 1.2fr) 110px;
   }
   .queueDuration,
   .queueActions {
@@ -858,9 +1184,20 @@
   .sidebar .navItem {
     justify-content: center;
     padding: 11px 10px;
+    position: relative;
   }
   .navLabel {
     display: none;
+  }
+  .navCount {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    margin: 0;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
   }
   .sidebarTag,
   .sidebarFoot {
@@ -928,6 +1265,10 @@
     box-shadow: none;
     background: var(--surface-1);
   }
+  .navCount {
+    top: 1px;
+    right: calc(50% - 21px);
+  }
   .navLabelShort {
     display: block;
     max-width: 100%;
@@ -953,5 +1294,41 @@
   }
   .statRow {
     grid-template-columns: 1fr 1fr;
+  }
+  /* feed card: stacked, nothing shares a row with the title */
+  .queueRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'time status'
+      'vehicle vehicle'
+      'specs specs';
+    gap: 10px 12px;
+    padding: 14px;
+  }
+  .queueTime {
+    grid-area: time;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .queueTimeEnd {
+    font-size: 12px;
+  }
+  .queueStatus {
+    grid-area: status;
+  }
+  .queueVehicle {
+    grid-area: vehicle;
+    align-items: flex-start;
+  }
+  .queueVehicleName {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .queueSpecs {
+    grid-area: specs;
+  }
+  .wizardConfig {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -5,7 +5,7 @@ import { useMemo, useReducer } from 'react'
 import { FRONT_LEGAL_MIN_VLT, TLV_STOPS, type TintZoneCode } from '../../types/domain'
 import type { Catalog, CatalogZone, CreatedBooking, ModelPriceOverride, PricingRuleInfo, QuoteSpec, ResolvedVehicle, SlotHold } from '../../types/api'
 
-export type BookingStep = 'vehicle' | 'config' | 'calendar' | 'confirm'
+export type BookingStep = 'service' | 'custom' | 'vehicle' | 'config' | 'calendar' | 'confirm'
 
 export interface DraftState {
   step: BookingStep
@@ -31,6 +31,7 @@ export interface DraftState {
 }
 
 export type DraftAction =
+  | { type: 'chooseService'; service: 'tint' | 'custom' }
   | { type: 'setVehicle'; vehicle: ResolvedVehicle }
   | { type: 'changeVehicle' }
   | { type: 'toggleZone'; zone: TintZoneCode }
@@ -55,7 +56,7 @@ export type DraftAction =
   | { type: 'restart' }
 
 export const INITIAL_DRAFT: DraftState = {
-  step: 'vehicle',
+  step: 'service',
   vehicle: null,
   selected: ['rear_sides'],
   frontVlt: 70,
@@ -78,6 +79,8 @@ export const INITIAL_DRAFT: DraftState = {
 
 function reducer(state: DraftState, action: DraftAction): DraftState {
   switch (action.type) {
+    case 'chooseService':
+      return { ...state, step: action.service === 'tint' ? 'vehicle' : 'custom' }
     case 'setVehicle':
       return { ...state, vehicle: action.vehicle, step: 'config' }
     case 'changeVehicle':

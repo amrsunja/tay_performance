@@ -1,9 +1,12 @@
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import logo from '../../assets/logo.svg'
 import { useAuth } from '../../auth/AuthProvider'
+import { countBookingsBetween, onAdminDataChange } from '../../api/admin'
 import { getCatalog } from '../../api/catalog'
+import { countNewServiceRequests } from '../../api/serviceRequests'
+import { SHOW_BAY_UI } from '../../lib/workshop'
 import NewBookingModal from './NewBookingModal'
 import Icon, { type IconName } from '../../components/ui/Icon'
 import styles from './admin.module.css'
@@ -11,8 +14,9 @@ import { useSeo } from '../../lib/seo'
 
 /* Vector icons, not glyphs: ⚙ renders as an *emoji* on iOS/Android and ⬡ ◈ ▤
    are plain tofu in most mobile system fonts. */
-const NAV: { to: string; label: string; short: string; icon: IconName; end?: boolean }[] = [
-  { to: '/admin', label: 'File du jour', short: 'File', icon: 'list', end: true },
+const NAV: { to: string; label: string; short: string; icon: IconName; end?: boolean; count?: 'today' | 'devis' }[] = [
+  { to: '/admin', label: 'File du jour', short: 'File', icon: 'list', end: true, count: 'today' },
+  { to: '/admin/devis', label: 'Devis demandés', short: 'Devis', icon: 'message', count: 'devis' },
   { to: '/admin/agenda', label: 'Agenda', short: 'Agenda', icon: 'calendar' },
   { to: '/admin/clients', label: 'Clients', short: 'Clients', icon: 'users' },
   { to: '/admin/vehicules', label: 'Véhicules', short: 'Véhic.', icon: 'car' },
@@ -27,6 +31,14 @@ function todayLabel() {
   )
 }
 
+/** Today's feed items (same filter as the feed itself). */
+function countToday(): Promise<number> {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  return countBookingsBetween(start.toISOString(), end.toISOString())
+}
+
 export default function AdminLayout() {
   useSeo({ title: 'Administration', noindex: true })
   const navigate = useNavigate()
@@ -34,6 +46,15 @@ export default function AdminLayout() {
   const [creating, setCreating] = useState(false)
   const catalog = useQuery({ queryKey: ['catalog'], queryFn: getCatalog, staleTime: 5 * 60_000 })
   const bayCount = catalog.data?.settings.bayCount ?? 1
+  const queryClient = useQueryClient()
+
+  // at the shell so the tab indicators, and whichever page is open, stay live
+  useEffect(() => onAdminDataChange(() => queryClient.invalidateQueries({ queryKey: ['admin'] })), [queryClient])
+
+  // the interval is the safety net when the realtime socket drops (phone in a pocket)
+  const todayCount = useQuery({ queryKey: ['admin', 'count', 'today'], queryFn: countToday, refetchInterval: 60_000 })
+  const devisCount = useQuery({ queryKey: ['admin', 'count', 'devis'], queryFn: countNewServiceRequests, refetchInterval: 60_000 })
+  const counts = { today: todayCount.data ?? 0, devis: devisCount.data ?? 0 }
 
   return (
     <div className={styles.shell}>
@@ -55,12 +76,20 @@ export default function AdminLayout() {
               </span>
               <span className={styles.navLabel}>{item.label}</span>
               <span className={styles.navLabelShort}>{item.short}</span>
+              {item.count && counts[item.count] > 0 && (
+                <span
+                  className={`mono ${styles.navCount} ${item.count === 'devis' ? styles.navCountAlert : ''}`}
+                  aria-label={item.count === 'devis' ? `${counts.devis} demandes à traiter` : `${counts.today} réservations aujourd'hui`}
+                >
+                  {counts[item.count] > 99 ? '99+' : counts[item.count]}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
         <div className={styles.sidebarFoot}>
           <span className={`mono ${styles.sidebarFootLine}`}>
-            {bayCount > 1 ? `${bayCount} baies` : 'Baie 1'} · Illkirch 67400
+            {SHOW_BAY_UI ? `${bayCount > 1 ? `${bayCount} baies` : 'Baie 1'} · ` : ''}Illkirch 67400
           </span>
           <button
             type="button"
@@ -83,16 +112,18 @@ export default function AdminLayout() {
             <span className={`mono ${styles.topbarDateText}`}>{todayLabel()}</span>
           </div>
           <div className={styles.topbarRight}>
-            <label className={`mono ${styles.baySelect}`}>
-              BAIE
-              <select className={styles.baySelectField} defaultValue="1" aria-label="Sélection de la baie">
-                {Array.from({ length: bayCount }).map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Baie {i + 1}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {SHOW_BAY_UI && (
+              <label className={`mono ${styles.baySelect}`}>
+                BAIE
+                <select className={styles.baySelectField} defaultValue="1" aria-label="Sélection de la baie">
+                  {Array.from({ length: bayCount }).map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Baie {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button
               type="button"
               className="cta"
