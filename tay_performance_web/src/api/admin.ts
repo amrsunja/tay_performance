@@ -30,6 +30,7 @@ interface AdminBookingSelectRow {
   custom_title: string | null
   custom_vehicle: string | null
   admin_message: string | null
+  overlap_forced: boolean
   profiles: { full_name: string | null; phone: string | null; email: string | null } | null
   booking_tint_specs: { zone_code: string; vlt_percent: number; is_legal: boolean }[]
   vehicle_variants: {
@@ -41,7 +42,7 @@ interface AdminBookingSelectRow {
 
 const ADMIN_BOOKING_SELECT = `id, reference, slot_start, slot_end, duration_min, status, legal_flag,
   price_total, contact_name, contact_phone, contact_email, client_notes, user_id, created_by_admin, for_other, price_overridden,
-  custom_title, custom_vehicle, admin_message,
+  custom_title, custom_vehicle, admin_message, overlap_forced,
   profiles(full_name, phone, email),
   booking_tint_specs(zone_code, vlt_percent, is_legal),
   vehicle_variants(body_style_code, body_styles(label_fr),
@@ -79,6 +80,7 @@ function mapRow(b: AdminBookingSelectRow): AdminBookingRow {
     createdByAdmin: Boolean(b.created_by_admin),
     isCustom: b.custom_title != null,
     adminMessage: b.admin_message,
+    overlapForced: Boolean(b.overlap_forced),
     specs: (b.booking_tint_specs ?? []).map((s) => ({
       zone: s.zone_code as TintZoneCode,
       vltPercent: Number(s.vlt_percent),
@@ -111,6 +113,34 @@ export async function countBookingsBetween(fromISO: string, toISO: string): Prom
     .not('status', 'in', '(cancelled)')
   if (error) throw error
   return count ?? 0
+}
+
+export interface SlotConflicts {
+  bookings: AdminBookingRow[]
+  /** clients in the middle of booking this time (live holds) */
+  holds: number
+}
+
+/** What already occupies [startISO, endISO) — shown before the admin books over it. */
+export async function getSlotConflicts(startISO: string, endISO: string): Promise<SlotConflicts> {
+  const [bookings, holds] = await Promise.all([
+    supabase
+      .from('bookings')
+      .select(ADMIN_BOOKING_SELECT)
+      .in('status', ['requested', 'confirmed', 'in_progress'])
+      .lt('slot_start', endISO)
+      .gt('slot_end', startISO)
+      .order('slot_start'),
+    supabase
+      .from('booking_holds')
+      .select('id', { count: 'exact', head: true })
+      .gt('expires_at', new Date().toISOString())
+      .lt('slot_start', endISO)
+      .gt('slot_end', startISO),
+  ])
+  if (bookings.error) throw bookings.error
+  if (holds.error) throw holds.error
+  return { bookings: ((bookings.data ?? []) as unknown as AdminBookingSelectRow[]).map(mapRow), holds: holds.count ?? 0 }
 }
 
 export async function getAdminBooking(id: string): Promise<AdminBookingRow | null> {
@@ -319,6 +349,10 @@ export interface AdminCreateBookingInput {
   bay?: number
   /** admin-set total (€); null/undefined keeps the computed quote */
   priceOverride?: number | null
+  /** client picked from the list */
+  userId?: string | null
+  /** the admin confirmed booking over an existing RDV */
+  allowOverlap?: boolean
 }
 
 export async function adminCreateBooking(input: AdminCreateBookingInput): Promise<{ reference: string }> {
@@ -331,9 +365,10 @@ export async function adminCreateBooking(input: AdminCreateBookingInput): Promis
     p_contact_email: input.contactEmail ?? null,
     p_client_notes: input.clientNotes ?? null,
     p_bay: input.bay ?? 1,
-    p_user_id: null,
+    p_user_id: input.userId ?? null,
     p_vehicle_id: null,
     p_price_override: input.priceOverride ?? null,
+    p_allow_overlap: input.allowOverlap ?? false,
   })
   if (error) throw error
   return { reference: (data as { reference: string }).reference }

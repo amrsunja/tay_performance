@@ -1183,4 +1183,97 @@ begin
 end $$;
 reset role;
 
+-- ---------------------------------------------------------------
+-- T21 — admin overlap override + client picked from the list (0024)
+-- ---------------------------------------------------------------
+select set_config('test.uid', '00000000-0000-0000-0000-0000000000ad', false);
+set role authenticated;
+do $$
+declare
+  v_day   date := current_setting('test.day')::date + 7;
+  v_start timestamptz := (v_day + time '10:00') at time zone 'Europe/Paris';
+  r       jsonb;
+  b       public.bookings%rowtype;
+begin
+  r := public.admin_create_custom_booking('Detailing', v_start, 120, '+33600000003');
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if b.overlap_forced then raise exception 'T21 free slot flagged'; end if;
+
+  -- an overlap without the admin's confirmation is still refused, tint and custom
+  begin
+    perform public.admin_create_custom_booking('Covering', v_start + interval '1 hour', 60, '+33600000003');
+    raise exception 'T21 custom overlap accepted without confirmation';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+  begin
+    perform public.admin_create_booking(current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_sides","vlt_percent":20}]'::jsonb, v_start, 'X', '+33600000003');
+    raise exception 'T21 tint overlap accepted without confirmation';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+
+  -- confirmed by the admin: both go through, flagged, attached to the picked client
+  r := public.admin_create_custom_booking('Covering', v_start + interval '1 hour', 60, '+33600000003',
+         p_user_id => '00000000-0000-0000-0000-00000000000a', p_allow_overlap => true);
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if not b.overlap_forced or b.user_id <> '00000000-0000-0000-0000-00000000000a' then
+    raise exception 'T21 forced custom booking %', to_jsonb(b);
+  end if;
+  r := public.admin_create_booking(current_setting('test.variant_id')::uuid,
+         '[{"zone_code":"rear_sides","vlt_percent":20}]'::jsonb, v_start, null, '+33600000003',
+         p_user_id => '00000000-0000-0000-0000-00000000000b', p_allow_overlap => true);
+  select * into b from public.bookings where id = (r->>'id')::uuid;
+  if not b.overlap_forced or b.user_id <> '00000000-0000-0000-0000-00000000000b' then
+    raise exception 'T21 forced tint booking %', to_jsonb(b);
+  end if;
+
+  -- allowed but not needed: not flagged
+  r := public.admin_create_custom_booking('Sellerie', (v_day + time '16:00') at time zone 'Europe/Paris', 30, '+33600000003', p_allow_overlap => true);
+  if (select overlap_forced from public.bookings where id = (r->>'id')::uuid) then raise exception 'T21 flag without overlap'; end if;
+
+  -- a move never overrides
+  begin
+    perform public.admin_reschedule_booking((r->>'id')::uuid, v_start);
+    raise exception 'T21 reschedule overlapped';
+  exception when others then
+    if sqlerrm <> 'SLOT_TAKEN' then raise; end if;
+  end;
+
+  -- moved to a free time, a forced booking becomes a normal one
+  perform public.admin_reschedule_booking(b.id, (v_day + time '13:00') at time zone 'Europe/Paris');
+  if (select overlap_forced from public.bookings where id = b.id) then raise exception 'T21 flag kept after a move'; end if;
+
+  begin
+    perform public.admin_create_booking(current_setting('test.variant_id')::uuid,
+      '[{"zone_code":"rear_sides","vlt_percent":20}]'::jsonb, now() - interval '1 hour', null, '+33600000003', p_allow_overlap => true);
+    raise exception 'T21 past tint accepted';
+  exception when others then
+    if sqlerrm <> 'SLOT_IN_PAST' then raise; end if;
+  end;
+end $$;
+reset role;
+-- clients still see the time as taken
+do $$
+declare v_day date := current_setting('test.day')::date + 7; v_st text;
+begin
+  select state into v_st from public._day_slots(v_day, 60, null)
+   where slot_start = (v_day + time '11:30') at time zone 'Europe/Paris';
+  if v_st <> 'taken' then raise exception 'T21 forced booking free for clients: %', v_st; end if;
+end $$;
+-- a client cannot use the override
+select set_config('test.uid', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+do $$
+begin
+  begin
+    perform public.admin_create_custom_booking('X', now() + interval '30 days', 60, '+33600000003', p_allow_overlap => true);
+    raise exception 'T21 client used the override';
+  exception when others then
+    if sqlerrm <> 'FORBIDDEN' then raise; end if;
+  end;
+end $$;
+reset role;
+
 select 'ALL TESTS PASSED' as result;

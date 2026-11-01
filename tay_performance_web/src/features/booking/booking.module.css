@@ -904,6 +904,13 @@
   color: var(--text-faint);
 }
 
+/* admin: a closed or full day stays selectable, just quieter */
+.calDayPickable {
+  opacity: 0.65;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .calDayToday {
   border-color: var(--octane-500);
 }

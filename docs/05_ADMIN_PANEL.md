@@ -31,7 +31,8 @@ Email + password → `signInWithPassword`. On success fetch own profile; non-adm
 A client who wants something other than a tint sends a `service_requests` row: prestation, message, phone, e-mail, optional name and vehicle — no date. The tab badge counts the `new` ones.
 - **Confirmer** → `admin_confirm_service_request`: the admin's title, date, duration, price (optional) and message create a real `bookings` row (`custom_title` set, no variant, no specs), `confirmed`, linked to the request. From there it is a booking like any other: agenda, drawer, history, finance, client portal, e-mail + SMS, J-1 reminder.
 - **Refuser** → `admin_decline_service_request`, optional reason sent to the client by e-mail + SMS.
-- The topbar **+ Nouvelle réservation** wizard creates either a tint booking or a custom one (`admin_create_custom_booking`). The client name is optional in both; a booking is attached to the client whose verified phone matches.
+- The topbar **+ Nouvelle réservation** wizard creates either a tint booking or a custom one (`admin_create_custom_booking`). The client name is optional in both. The client can be picked from the list (the booking is attached to that account) or typed; a typed one is attached to the client whose verified phone matches.
+- Time (new reservation and devis confirmation): the client calendar and free times, or any other time. A time overlapping an RDV lists what is there and needs "Créer quand même" (`p_allow_overlap`, migration 0024). The booking is flagged `overlap_forced`, shown side by side in the agenda; clients never see that time as free, and "Déplacer" still refuses overlaps.
 - Admin SMS alerts: new client booking, new devis, client cancellation or reprogramming. Number: Config → Notifications (`private_settings.admin_sms_phone`, admin-only), else `app_settings.contact_phone`.
 
 ## 2. `/admin/agenda` (AgendaPage)
