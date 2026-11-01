@@ -304,6 +304,11 @@ export default function QueuePage() {
                   </span>
                 </div>
                 <div className={styles.queueSpecs}>
+                  {entry.overlapForced && (
+                    <span className="chip" style={{ borderColor: 'rgba(248,113,113,.5)', color: 'var(--status-warning)' }}>
+                      Doublon <Icon name="warning" size={11} />
+                    </span>
+                  )}
                   {entry.isCustom && <span className="chip chip--rear">{entry.bodyLabel || 'Personnalisée'}</span>}
                   {entry.specs.map((spec) => (
                     <span

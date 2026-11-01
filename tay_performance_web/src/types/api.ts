@@ -299,6 +299,8 @@ export interface AdminBookingRow {
   createdByAdmin: boolean
   isCustom: boolean
   adminMessage: string | null
+  /** the admin knowingly booked this over another RDV */
+  overlapForced: boolean
   specs: { zone: TintZoneCode; vltPercent: number; isLegal: boolean }[]
 }
 

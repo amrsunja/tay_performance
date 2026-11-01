@@ -100,6 +100,7 @@ export interface ConfirmServiceRequestInput {
   adminMessage?: string | null
   contactName?: string | null
   vehicle?: string | null
+  allowOverlap?: boolean
 }
 
 export async function confirmServiceRequest(input: ConfirmServiceRequestInput): Promise<{ id: string; reference: string }> {
@@ -112,6 +113,7 @@ export async function confirmServiceRequest(input: ConfirmServiceRequestInput): 
     p_admin_message: input.adminMessage?.trim() || null,
     p_contact_name: input.contactName?.trim() || null,
     p_vehicle: input.vehicle?.trim() || null,
+    p_allow_overlap: input.allowOverlap ?? false,
   })
   if (error) throw error
   return data as { id: string; reference: string }
@@ -136,6 +138,9 @@ export interface AdminCreateCustomBookingInput {
   vehicle?: string | null
   price?: number | null
   adminMessage?: string | null
+  /** client picked from the list */
+  userId?: string | null
+  allowOverlap?: boolean
 }
 
 export async function adminCreateCustomBooking(input: AdminCreateCustomBookingInput): Promise<{ id: string; reference: string }> {
@@ -150,6 +155,8 @@ export async function adminCreateCustomBooking(input: AdminCreateCustomBookingIn
     p_vehicle: input.vehicle?.trim() || null,
     p_price: input.price ?? null,
     p_admin_message: input.adminMessage?.trim() || null,
+    p_user_id: input.userId ?? null,
+    p_allow_overlap: input.allowOverlap ?? false,
   })
   if (error) throw error
   return data as { id: string; reference: string }

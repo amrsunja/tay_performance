@@ -55,6 +55,29 @@ function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Column of each block when RDVs overlap (admin override, 0024): overlapping ones sit side by side. */
+function laneLayout<T extends { booking: { id: string }; start: number; duration: number }>(items: T[]) {
+  const out = new Map<string, { lane: number; lanes: number }>()
+  let cluster: { id: string; lane: number }[] = []
+  let laneEnds: number[] = []
+  let clusterEnd = -1
+  const flush = () => {
+    for (const c of cluster) out.set(c.id, { lane: c.lane, lanes: laneEnds.length })
+    cluster = []
+    laneEnds = []
+  }
+  for (const b of [...items].sort((x, y) => x.start - y.start)) {
+    if (b.start >= clusterEnd) flush()
+    const free = laneEnds.findIndex((end) => end <= b.start)
+    const lane = free >= 0 ? free : laneEnds.length
+    laneEnds[lane] = b.start + b.duration
+    cluster.push({ id: b.booking.id, lane })
+    clusterEnd = Math.max(clusterEnd, b.start + b.duration)
+  }
+  flush()
+  return out
+}
+
 export default function AgendaPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [openBooking, setOpenBooking] = useState<string | null>(null)
@@ -252,6 +275,7 @@ export default function AgendaPage() {
             const isBlackout = blackoutSet.has(dayISO)
             const closedAll = isBlackout || !dayHours?.isOpen
             const openH = dayHours?.openTime ? Number(dayHours.openTime.slice(0, 2)) + Number(dayHours.openTime.slice(3, 5)) / 60 : DEFAULT_OPEN_HOUR
+            const lanes = laneLayout(blocks.filter((b) => b.day === dayIndex))
             const closeH = dayHours?.closeTime ? Number(dayHours.closeTime.slice(0, 2)) + Number(dayHours.closeTime.slice(3, 5)) / 60 : DEFAULT_CLOSE_HOUR
             return (
               <div key={d} className={styles.agendaDayCol} style={{ height: HOURS.length * HOUR_PX }}>
@@ -283,6 +307,7 @@ export default function AgendaPage() {
                   .filter((b) => b.day === dayIndex)
                   .map((block) => {
                     const tone = TONE_STYLES[block.tone]
+                    const { lane, lanes: laneCount } = lanes.get(block.booking.id) ?? { lane: 0, lanes: 1 }
                     return (
                       <button
                         key={block.booking.id}
@@ -295,7 +320,9 @@ export default function AgendaPage() {
                           background: tone.bg,
                           cursor: 'pointer',
                           textAlign: 'left',
-                          width: 'calc(100% - 8px)',
+                          left: `calc(${(lane / laneCount) * 100}% + 4px)`,
+                          right: 'auto',
+                          width: `calc(${100 / laneCount}% - 8px)`,
                         }}
                         onClick={() => setOpenBooking(block.booking.id)}
                       >

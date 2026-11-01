@@ -221,6 +221,11 @@ export default function BookingDrawer({ bookingId, onClose }: { bookingId: strin
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
                 <StatusPill status={b.status} />
                 {b.isCustom && <span className="pill pill--info">Personnalisée</span>}
+                {b.overlapForced && b.status !== 'cancelled' && (
+                  <span className="pill pill--warning">
+                    <Icon name="warning" size={13} /> Créneau en doublon
+                  </span>
+                )}
                 {b.legalFlag === 'non_compliant_ack' && (
                   <span className="pill pill--warning">
                     <Icon name="warning" size={13} /> Hors conformité (ack client)

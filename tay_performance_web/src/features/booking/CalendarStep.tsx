@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthProvider'
-import { getDaySlots, getMonthAvailability, holdSlot, releaseHold } from '../../api/availability'
+import { getDaySlots, holdSlot, releaseHold } from '../../api/availability'
 import { createBooking } from '../../api/bookings'
 import { getMyProfile } from '../../api/profile'
 import { isValidEmail } from '../../api/auth'
@@ -11,6 +11,7 @@ import { errorMessage } from '../../lib/supabase'
 import PhoneInput from '../../components/ui/PhoneInput'
 import type { ResolvedVehicle, SlotInfo } from '../../types/api'
 import { dayLabel, getMonth } from './calendar'
+import MonthCalendar from './MonthCalendar'
 import { formatDuration, formatEuro, formatPrice, type DraftAction, type DraftState, type LocalQuote } from './useBookingDraft'
 import Icon from '../../components/ui/Icon'
 import styles from './booking.module.css'
@@ -21,9 +22,6 @@ interface StepProps {
   quote: LocalQuote
   vehicle: ResolvedVehicle
 }
-
-const WEEKDAYS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
-const MAX_MONTH_OFFSET = 2
 
 const slotTimeFmt = new Intl.DateTimeFormat('fr-FR', {
   hour: '2-digit',
@@ -77,26 +75,10 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
     }
   }
   const month = getMonth(state.monthOffset)
-  const today = new Date()
   const [error, setError] = useState('')
   const [remaining, setRemaining] = useState<number | null>(null)
 
   const duration = quote.minutes
-
-  const monthAvail = useQuery({
-    queryKey: ['availability', 'month', month.year, month.month + 1, duration],
-    queryFn: () => getMonthAvailability(month.year, month.month + 1, duration),
-    enabled: duration > 0,
-    staleTime: 15_000,
-  })
-
-  const availByDay = useMemo(() => {
-    const map = new Map<number, { state: string; freeCount: number }>()
-    for (const d of monthAvail.data ?? []) {
-      map.set(Number(d.day.slice(8, 10)), { state: d.state, freeCount: d.freeCount })
-    }
-    return map
-  }, [monthAvail.data])
 
   const selectedDay =
     state.selectedDate && state.selectedDate.month === month.month && state.selectedDate.year === month.year
@@ -278,94 +260,13 @@ export default function CalendarStep({ state, dispatch, quote, vehicle }: StepPr
 
           {/* ---------- calendar ---------- */}
           <div className={styles.calendarCol}>
-            <div className={styles.calCard}>
-              <div className={styles.calNav}>
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  aria-label="Mois précédent"
-                  disabled={state.monthOffset === 0}
-                  onClick={() => dispatch({ type: 'setMonthOffset', value: state.monthOffset - 1 })}
-                >
-                  ‹
-                </button>
-                <div className={`sat ${styles.calLabel}`}>{month.label}</div>
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  aria-label="Mois suivant"
-                  disabled={state.monthOffset >= MAX_MONTH_OFFSET}
-                  onClick={() => dispatch({ type: 'setMonthOffset', value: state.monthOffset + 1 })}
-                >
-                  ›
-                </button>
-              </div>
-              <div className={styles.calWeekRow}>
-                {WEEKDAYS.map((d) => (
-                  <div key={d} className={`mono ${styles.calWeekDay}`}>
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className={styles.calGrid}>
-                {Array.from({ length: month.firstWeekday }).map((_, i) => (
-                  <div key={`blank-${i}`} />
-                ))}
-                {Array.from({ length: month.days }).map((_, i) => {
-                  const day = i + 1
-                  const avail = availByDay.get(day) ?? { state: monthAvail.isPending ? 'loading' : 'closed', freeCount: 0 }
-                  const isToday =
-                    today.getFullYear() === month.year && today.getMonth() === month.month && today.getDate() === day
-                  const isSelected = selectedDay === day
-                  const clickable = avail.state === 'available'
-                  const cls = [
-                    styles.calDay,
-                    avail.state === 'past' || avail.state === 'closed' || avail.state === 'loading' ? styles.calDayMuted : '',
-                    avail.state === 'full' ? styles.calDayFull : '',
-                    isToday ? styles.calDayToday : '',
-                    isSelected ? styles.calDaySelected : '',
-                  ].join(' ')
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      className={cls}
-                      disabled={!clickable}
-                      onClick={() =>
-                        dispatch({ type: 'selectDate', date: { year: month.year, month: month.month, day } })
-                      }
-                    >
-                      <span className={`mono ${styles.calDayNum}`}>{day}</span>
-                      {avail.state === 'available' && (
-                        <>
-                          <span className={`mono ${styles.calDaySub}`}>
-                            {avail.freeCount}
-                            <span className={styles.calDaySubWord}> libre{avail.freeCount > 1 ? 's' : ''}</span>
-                          </span>
-                          <span className={styles.calDot} aria-hidden />
-                        </>
-                      )}
-                      {avail.state === 'full' && <span className={`mono ${styles.calDaySubFull}`}>complet</span>}
-                      {avail.state === 'closed' && <span className={`mono ${styles.calDaySubClosed}`}>fermé</span>}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className={styles.calLegend}>
-                <span className={styles.bpLegendItem}>
-                  <span className={styles.calDotStatic} />
-                  <span className={`mono ${styles.bpLegendText}`}>Créneaux libres</span>
-                </span>
-                <span className={styles.bpLegendItem}>
-                  <span className={styles.calSquareDashed} />
-                  <span className={`mono ${styles.bpLegendText}`}>Complet</span>
-                </span>
-                <span className={styles.bpLegendItem}>
-                  <span className={styles.calSquareToday} />
-                  <span className={`mono ${styles.bpLegendText}`}>Aujourd'hui</span>
-                </span>
-              </div>
-            </div>
+            <MonthCalendar
+              durationMin={duration}
+              monthOffset={state.monthOffset}
+              onMonthChange={(value) => dispatch({ type: 'setMonthOffset', value })}
+              selected={state.selectedDate}
+              onSelect={(date) => dispatch({ type: 'selectDate', date })}
+            />
 
             {selectedDay !== null && (
               <div className={styles.slotsCard}>

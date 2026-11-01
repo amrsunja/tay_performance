@@ -9,7 +9,7 @@ import type { ServiceRequestRow, ServiceRequestStatus } from '../../types/api'
 import Modal from '../../components/ui/Modal'
 import { NO_NAME_LABEL } from '../../api/admin'
 import BookingDrawer from './BookingDrawer'
-import SlotPicker from './SlotPicker'
+import SlotPicker, { type SlotConflictState } from './SlotPicker'
 import { CUSTOM_DURATIONS, parsePriceInput } from './customBooking'
 import styles from './admin.module.css'
 
@@ -29,6 +29,7 @@ function ConfirmModal({ request, onClose }: { request: ServiceRequestRow; onClos
   const [name, setName] = useState(request.contactName ?? '')
   const [duration, setDuration] = useState(120)
   const [slotStart, setSlotStart] = useState('')
+  const [conflict, setConflict] = useState<SlotConflictState>('none')
   const [priceInput, setPriceInput] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -45,6 +46,7 @@ function ConfirmModal({ request, onClose }: { request: ServiceRequestRow; onClos
         adminMessage: message,
         contactName: name,
         vehicle,
+        allowOverlap: conflict === 'accepted',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] })
@@ -81,7 +83,7 @@ function ConfirmModal({ request, onClose }: { request: ServiceRequestRow; onClos
         </div>
         <div className={styles.formGroup}>
           <span className={styles.formLabel}>Date et heure *</span>
-          <SlotPicker durationMin={duration} value={slotStart} onChange={setSlotStart} allowManual />
+          <SlotPicker durationMin={duration} value={slotStart} onChange={setSlotStart} onConflictChange={setConflict} />
         </div>
         <div className={styles.formGroup}>
           <label className={styles.formLabel} htmlFor="dv-price">Prix (€)</label>
@@ -114,7 +116,7 @@ function ConfirmModal({ request, onClose }: { request: ServiceRequestRow; onClos
           type="button"
           className="cta"
           style={{ fontSize: 14, padding: '13px 24px', borderRadius: 12 }}
-          disabled={mutation.isPending || title.trim().length < 2 || !slotStart || !price.valid}
+          disabled={mutation.isPending || title.trim().length < 2 || !slotStart || conflict === 'unresolved' || !price.valid}
           onClick={() => mutation.mutate()}
         >
           {mutation.isPending ? 'Confirmation…' : 'Confirmer le rendez-vous'}

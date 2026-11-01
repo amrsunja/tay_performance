@@ -19,7 +19,8 @@ import { computeLocalQuote, formatDuration, formatEuro, formatPrice, INITIAL_DRA
 import type { ResolvedVehicle } from '../../types/api'
 import Icon from '../../components/ui/Icon'
 import { CUSTOM_SERVICES, TLV_STOPS, type TintZoneCode } from '../../types/domain'
-import SlotPicker from './SlotPicker'
+import SlotPicker, { type SlotConflictState } from './SlotPicker'
+import ClientPicker, { type PickedClient } from './ClientPicker'
 import { CUSTOM_DURATIONS, parsePriceInput } from './customBooking'
 import booking from '../booking/booking.module.css'
 import styles from './admin.module.css'
@@ -50,6 +51,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
   const [adminMessage, setAdminMessage] = useState('')
   // both
   const [slotStart, setSlotStart] = useState('')
+  const [conflict, setConflict] = useState<SlotConflictState>('none')
+  const [client, setClient] = useState<PickedClient | null>(null)
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -90,6 +93,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
             contactEmail: contactEmail.trim() || null,
             clientNotes: notes || null,
             priceOverride,
+            userId: client?.id ?? null,
+            allowOverlap: conflict === 'accepted',
           })
         : adminCreateCustomBooking({
             title: title.trim(),
@@ -102,6 +107,8 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
             vehicle: customVehicle,
             price: price.value,
             adminMessage,
+            userId: client?.id ?? null,
+            allowOverlap: conflict === 'accepted',
           }),
     onSuccess: (r) => {
       setReference(r.reference)
@@ -111,6 +118,13 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
     },
     onError: (e) => setError(errorMessage(e)),
   })
+
+  const applyClient = (c: PickedClient | null) => {
+    setClient(c)
+    setContactName(c?.name ?? '')
+    setContactPhone(c?.phone ?? '')
+    setContactEmail(c?.email ?? '')
+  }
 
   const toggleZone = (zone: TintZoneCode) =>
     setSelected((s) => (s.includes(zone) ? s.filter((z) => z !== zone) : [...s, zone]))
@@ -281,14 +295,16 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
           <>
             <div className={styles.formGroup}>
               <span className={styles.formLabel}>Créneau · {formatDuration(durationMin)}</span>
-              <SlotPicker durationMin={durationMin} value={slotStart} onChange={setSlotStart} allowManual={kind === 'custom'} />
+              <SlotPicker durationMin={durationMin} value={slotStart} onChange={setSlotStart} onConflictChange={setConflict} />
             </div>
 
             {/* one field per line, full width, phone and desktop alike */}
             <div className={styles.formGroup}>
               <span className={styles.formLabel}>Client</span>
+              <ClientPicker value={client} onChange={applyClient} />
               <input className="field" placeholder="Nom du client (facultatif)" autoComplete="off" value={contactName} onChange={(e) => setContactName(e.target.value)} aria-label="Nom du client" />
-              <PhoneInput value={contactPhone} onChange={setContactPhone} aria-label="Téléphone *" />
+              {/* remounted on a pick: the input keeps its own typed text otherwise */}
+              <PhoneInput key={client?.id ?? 'new'} value={contactPhone} onChange={setContactPhone} aria-label="Téléphone *" />
               <input className="field" placeholder="E-mail (facultatif)" type="email" autoComplete="off" aria-invalid={!emailOk || undefined} value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} aria-label="E-mail" />
               <input className="field" placeholder="Note" value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Note" />
             </div>
@@ -363,7 +379,7 @@ export default function NewBookingModal({ onClose }: { onClose: () => void }) {
                 type="button"
                 className="cta"
                 style={{ fontSize: 14, padding: '13px 24px', borderRadius: 12 }}
-                disabled={createMutation.isPending || !slotStart || !contactPhone || !emailOk || !price.valid}
+                disabled={createMutation.isPending || !slotStart || conflict === 'unresolved' || !contactPhone || !emailOk || !price.valid}
                 onClick={() => createMutation.mutate()}
               >
                 {createMutation.isPending ? 'Création…' : 'Créer la réservation (confirmée)'}
